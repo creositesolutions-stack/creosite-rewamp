@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Creosite Solutions – Websites for what’s next</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--bg2:#08100d;--panel:#0d1613;--line:#1b2a25;--text:#f2f5f4;--mute:#8a9a95;--g1:#2bf0a4;--g2:#19d6c8;--glow:rgba(43,240,164,.35);
+ color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter Tight",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--g1);outline-offset:3px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.12em;color:var(--mute)}
+/* nav */
+header{position:fixed;top:0;left:0;right:0;z-index:20;padding-top:env(safe-area-inset-top,0px);background:rgba(0,0,0,.72);backdrop-filter:blur(14px);border-bottom:1px solid #111b17}
+nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.02em}
+.logo svg{width:34px;height:34px}
+.logo small{display:block;font-family:"JetBrains Mono",monospace;font-size:8px;letter-spacing:.5em;color:var(--mute);font-weight:400;margin-top:-3px}
+.links{display:flex;gap:34px;font-size:15px;color:#c9d3cf}
+.links a:hover{color:var(--g1)}
+.pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:12px 22px;font-weight:500;font-size:15px;border:1px solid var(--line);transition:.25s;cursor:pointer;font-family:inherit;color:var(--text);background:transparent}
+.pill.ghost{border-color:#0f6b4d;box-shadow:0 0 24px rgba(43,240,164,.12)}
+.pill.ghost:hover{box-shadow:0 0 30px var(--glow)}
+.pill.solid{background:linear-gradient(90deg,var(--g1),var(--g2));color:#00251a;border:0;font-weight:600;box-shadow:0 0 34px var(--glow)}
+.pill.solid:hover{transform:translateY(-2px)}
+.pill.dark{background:#0a0a0a;border-color:#2a2f2d}
+.pill.dark:hover{border-color:var(--g1)}
+.menu{display:none;background:none;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 12px;font:inherit}
+/* hero */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:130px 0 90px;overflow:hidden}
+.waves{position:absolute;inset:auto 0 0 0;height:55%;width:100%;pointer-events:none}
+.waves path.a{animation:drift 14s ease-in-out infinite alternate}
+.waves path.b{animation:drift 18s ease-in-out infinite alternate-reverse}
+@keyframes drift{to{transform:translateY(-22px)}}
+.chip{display:inline-flex;align-items:center;gap:10px;border:1px solid #1e2b27;border-radius:999px;padding:8px 18px;font-size:14px;background:#050a08;margin-bottom:26px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--g1);box-shadow:0 0 10px var(--g1)}
+h1{margin:0;font-size:clamp(52px,10.5vw,148px);line-height:.92;letter-spacing:-.045em;font-weight:800}
+h1 .w{background:linear-gradient(180deg,#fff,#9a9fa0);-webkit-background-clip:text;background-clip:text;color:transparent;display:block}
+h1 .o{display:block;color:transparent;-webkit-text-stroke:2px var(--g1);filter:drop-shadow(0 0 14px var(--glow))}
+.sub{max-width:560px;margin:34px auto 22px;color:#aab6b2;font-size:clamp(17px,2vw,21px)}
+.built{display:flex;justify-content:center;align-items:center;gap:14px;margin-bottom:34px;font-size:18px}
+.built i{color:var(--mute)}
+.built b{font-weight:500;display:flex;align-items:center;gap:8px}
+.ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hero .mono{position:absolute;bottom:22px;left:24px}.hero .mono.r{left:auto;right:24px}
+/* sections */
+section{padding:120px 0;position:relative}
+h2{font-size:clamp(34px,5vw,64px);letter-spacing:-.035em;line-height:1;margin:0 0 16px;font-weight:800}
+.lead{color:var(--mute);max-width:520px;font-size:18px;margin:0 0 56px}
+.outline{color:transparent;-webkit-text-stroke:1.5px var(--g1)}
+/* work */
+.work-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:22px}
+.card{position:relative;border:1px solid var(--line);border-radius:22px;background:var(--panel);overflow:hidden;transition:.35s;display:block}
+.card:hover{border-color:#13805c;box-shadow:0 0 50px rgba(43,240,164,.12);transform:translateY(-4px)}
+.card.big{grid-column:span 7}.card.sm{grid-column:span 5}.card.half{grid-column:span 6}
+.shot{height:300px;padding:26px 26px 0;background:radial-gradient(120% 90% at 30% 0,var(--tone) 0,transparent 70%)}
+.browser{height:100%;border-radius:12px 12px 0 0;background:#060b09;border:1px solid #1f2d28;border-bottom:0;overflow:hidden;transition:.5s}
+.card:hover .browser{transform:translateY(-10px)}
+.bar{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #16231f}
+.bar span{width:8px;height:8px;border-radius:50%;background:#26342f}
+.mock{padding:18px;display:grid;gap:10px}
+.mock .h{height:22px;width:62%;border-radius:6px;background:linear-gradient(90deg,var(--c),transparent)}
+.mock .l{height:8px;border-radius:4px;background:#17231f}
+.mock .row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.mock .row div{height:70px;border-radius:10px;background:#101b17;border:1px solid #1a2a24}
+.mock .row div:first-child{background:linear-gradient(135deg,var(--c),transparent);opacity:.7}
+.meta{padding:22px 26px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.meta h3{margin:0 0 4px;font-size:22px;letter-spacing:-.02em}
+.meta p{margin:0;color:var(--mute);font-size:15px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tags span{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:#b4c0bb}
+.note{margin-top:22px;color:var(--mute);font-size:14px}
+/* services */
+.svc{display:grid;grid-template-columns:1fr 1.15fr;gap:40px;align-items:stretch}
+.tabs{display:flex;flex-direction:column}
+.tab{all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:22px 4px;border-bottom:1px solid var(--line);font-size:clamp(22px,2.6vw,32px);letter-spacing:-.02em;color:#5f6e69;transition:.25s}
+.tab:hover{color:#c7d2ce}
+.tab[aria-selected=true]{color:var(--text);padding-left:14px;box-shadow:inset 3px 0 0 var(--g1)}
+.tab span{font-size:14px;color:var(--mute);font-family:"JetBrains Mono",monospace}
+.panel{border:1px solid var(--line);border-radius:26px;padding:38px;background:radial-gradient(90% 80% at 100% 0,rgba(43,240,164,.12),transparent 60%),var(--panel);min-height:420px;display:flex;flex-direction:column;justify-content:space-between}
+.panel h3{margin:0 0 12px;font-size:32px;letter-spacing:-.03em}
+.panel p{color:#b3beba;font-size:18px;margin:0 0 26px}
+.panel ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel li{padding-left:24px;position:relative;font-size:16px}
+.panel li::before{content:"";position:absolute;left:0;top:9px;width:10px;height:10px;border-radius:50%;background:var(--g1);box-shadow:0 0 10px var(--g1)}
+.panel .fade{animation:in .4s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+/* process */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);position:relative}
+.step{padding:34px 26px 10px 0}
+.step::before{content:"";display:block;width:14px;height:14px;border-radius:50%;background:var(--g1);box-shadow:0 0 18px var(--g1);margin:-41px 0 26px}
+.step h3{margin:0 0 8px;font-size:22px}.step p{margin:0 0 6px;color:var(--mute);font-size:16px}
+.step em{font-style:normal;color:var(--g1);font-size:14px}
+/* about */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:50px}
+.stat{border-left:1px solid var(--line);padding-left:20px}
+.stat b{display:block;font-size:46px;letter-spacing:-.04em;font-weight:800;background:linear-gradient(90deg,var(--g1),var(--g2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat span{color:var(--mute);font-size:15px}
+.about p{max-width:640px;font-size:20px;color:#b9c4c0;margin:0 0 14px}
+/* contact */
+.contact{display:grid;grid-template-columns:1fr 1.1fr;gap:50px}
+.info a{display:block;font-size:22px;margin:0 0 6px;color:var(--text)}
+.info a:hover{color:var(--g1)}
+.info p{color:var(--mute);margin:0 0 26px}
+form{border:1px solid var(--line);border-radius:26px;padding:34px;background:var(--panel);display:grid;gap:18px}
+label{display:grid;gap:8px;font-size:14px;color:#b4c0bb}
+input,select,textarea{font:inherit;color:var(--text);background:#060b09;border:1px solid #1f2d28;border-radius:12px;padding:14px 16px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g1);box-shadow:0 0 0 3px rgba(43,240,164,.15)}
+textarea{min-height:130px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips input{position:absolute;opacity:0;width:0}
+.chips label{cursor:pointer}
+.chips span{display:inline-block;border:1px solid #23332d;border-radius:999px;padding:8px 16px;color:#b4c0bb;transition:.2s}
+.chips input:checked+span{background:linear-gradient(90deg,var(--g1),var(--g2));color:#00251a;border-color:transparent;font-weight:600}
+.chips input:focus-visible+span{outline:2px solid var(--g1);outline-offset:2px}
+.ok{display:none;text-align:center;padding:40px 10px}
+.ok.show{display:block;animation:in .5s}
+.ok h3{font-size:30px;margin:0 0 8px}
+footer{border-top:1px solid #111b17;padding:34px 0 40px}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
+@media(max-width:900px){
+ .links,header .pill.ghost{display:none}.menu{display:block}
+ .links.open{display:flex;position:absolute;top:68px;left:0;right:0;flex-direction:column;gap:0;background:#000;border-bottom:1px solid var(--line)}
+ .links.open a{padding:16px 24px;border-top:1px solid #0f1a16}
+ .card.big,.card.sm,.card.half{grid-column:span 12}
+ .svc,.contact{grid-template-columns:1fr}
+ .steps{grid-template-columns:1fr 1fr;row-gap:40px}.stats{grid-template-columns:1fr 1fr}
+ .hero .mono{display:none}section{padding:80px 0}
+}
+@media(max-width:560px){.steps{grid-template-columns:1fr}.two,.panel ul{grid-template-columns:1fr}.panel{padding:26px}.meta{flex-direction:column;align-items:flex-start}.tags{justify-content:flex-start}.built{font-size:15px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><nav>
+ <a href="#top" class="logo" aria-label="Creosite Solutions home">
+  <svg viewBox="0 0 40 40" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2bf0a4"/><stop offset="1" stop-color="#19b6e0"/></linearGradient></defs><path d="M30 8H14a6 6 0 0 0-6 6v12a6 6 0 0 0 6 6h16" stroke="url(#lg)" stroke-width="6" stroke-linecap="round"/><path d="M20 20h12" stroke="url(#lg)" stroke-width="6" stroke-linecap="round"/></svg>
+  <span>Creosite<small>SOLUTIONS</small></span></a>
+ <div class="links" id="links"><a href="#work">Work</a><a href="#solutions">Solutions</a><a href="#process">Process</a><a href="#about">About</a><a href="#contact">Contact</a></div>
+ <a class="pill ghost" href="#contact">Start a project →</a>
+ <button class="menu" id="menu" aria-label="Toggle menu" aria-expanded="false">Menu</button>
+</nav></div></header>
+
+<main id="top">
+<div class="hero">
+ <svg class="waves" viewBox="0 0 1440 500" preserveAspectRatio="none" aria-hidden="true">
+  <defs><linearGradient id="w1" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0f6e52" stop-opacity=".95"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+  <linearGradient id="w2" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#14382f"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>
+  <path class="a" d="M0 260C220 180 420 200 560 300S900 480 1100 330 1340 160 1440 190V500H0Z" fill="url(#w1)" stroke="#9fd8c6" stroke-opacity=".5" stroke-width="2"/>
+  <path class="b" d="M0 330C200 280 380 330 520 400S860 500 1040 400 1320 250 1440 270V500H0Z" fill="url(#w2)" opacity=".8"/>
+ </svg>
+ <div class="wrap" style="position:relative">
+  <div class="chip"><span class="dot"></span>Creosite Solutions — Websites for what’s next</div>
+  <h1><span class="w">Let’s Build</span><span class="w">Something</span><span class="o">Unforgettable.</span></h1>
+  <p class="sub">AI-powered web development for modern businesses. Beautiful websites, built in days — not months.</p>
+  <div class="built"><i>built by</i><b>
+   <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#ddd" stroke-width="1.3" stroke-linecap="round"><path d="M6 14a9 9 0 0 1 18 0M9 22c1-3 1-6 1-8a5 5 0 0 1 10 0c0 3-.5 6-2 9M13 25c1.5-3 2-7 2-11M16 20c0 2-.4 3.4-1 5"/></svg>humans</b><span style="color:var(--mute)">+</span><b>
+   <svg width="34" height="34" viewBox="0 0 34 34"><path d="M17 1l3.5 11.5L32 17l-11.5 4.5L17 33l-3.5-11.5L2 17l11.5-4.5z" fill="#1fd48e" opacity=".9"/></svg>AI</b></div>
+  <div class="ctas"><a class="pill solid" href="#work">See our work ↓</a><a class="pill dark" href="#contact">Book a 30 min call →</a></div>
+ </div>
+ <span class="mono">EST. 2024 / INDIA · REMOTE · GLOBAL</span><span class="mono r">SCROLL ↓</span>
+</div>
+
+<section id="work"><div class="wrap">
+ <h2>Selected <span class="outline">work</span></h2>
+ <p class="lead">Sites we’ve shipped for brands that wanted to look sharp and launch fast.</p>
+ <div class="work-grid">
+  <a class="card big" href="#contact" style="--tone:rgba(43,240,164,.18);--c:#2bf0a4"><div class="shot"><div class="browser"><div class="bar"><span></span><span></span><span></span></div><div class="mock"><div class="h"></div><div class="l" style="width:80%"></div><div class="l" style="width:55%"></div><div class="row"><div></div><div></div><div></div></div></div></div></div>
+   <div class="meta"><div><h3>Northwind Logistics</h3><p>Corporate site with live shipment tracking</p></div><div class="tags"><span>Design</span><span>Web app</span></div></div></a>
+  <a class="card sm" href="#contact" style="--tone:rgba(25,214,200,.18);--c:#19d6c8"><div class="shot"><div class="browser"><div class="bar"><span></span><span></span><span></span></div><div class="mock"><div class="h"></div><div class="row"><div></div><div></div><div></div></div><div class="l"></div><div class="l" style="width:60%"></div></div></div></div>
+   <div class="meta"><div><h3>Bloom &amp; Co.</h3><p>Online store with one-page checkout</p></div><div class="tags"><span>E-commerce</span></div></div></a>
+  <a class="card half" href="#contact" style="--tone:rgba(120,240,120,.15);--c:#7af07a"><div class="shot"><div class="browser"><div class="bar"><span></span><span></span><span></span></div><div class="mock"><div class="h" style="width:40%"></div><div class="l" style="width:90%"></div><div class="l" style="width:70%"></div><div class="row"><div></div><div></div><div></div></div></div></div></div>
+   <div class="meta"><div><h3>Lumen Clinic</h3><p>Booking-first site for a healthcare group</p></div><div class="tags"><span>Booking</span><span>SEO</span></div></div></a>
+  <a class="card half" href="#contact" style="--tone:rgba(43,200,240,.15);--c:#2bc8f0"><div class="shot"><div class="browser"><div class="bar"><span></span><span></span><span></span></div><div class="mock"><div class="h" style="width:75%"></div><div class="l"></div><div class="row"><div></div><div></div><div></div></div><div class="l" style="width:45%"></div></div></div></div>
+   <div class="meta"><div><h3>Kite Analytics</h3><p>Product launch site for a SaaS startup</p></div><div class="tags"><span>Landing</span><span>CMS</span></div></div></a>
+ </div>
+ <p class="note">Project names and visuals are placeholders. Replace them with your real case studies.</p>
+</div></section>
+
+<section id="solutions" style="background:var(--bg2)"><div class="wrap">
+ <h2>What we <span class="outline">build</span></h2>
+ <p class="lead">Pick a service to see what’s included.</p>
+ <div class="svc">
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="panel" id="panel" role="tabpanel" aria-live="polite"></div>
+ </div>
+</div></section>
+
+<section id="process"><div class="wrap">
+ <h2>From idea to <span class="outline">live</span></h2>
+ <p class="lead">A clear path with a launch date you can plan around.</p>
+ <div class="steps">
+  <div class="step"><h3>Discover</h3><p>A 30 minute call on your goals, audience and brand.</p><em>Day 1</em></div>
+  <div class="step"><h3>Design</h3><p>Layouts and a visual direction you review and approve.</p><em>Days 2–3</em></div>
+  <div class="step"><h3>Build</h3><p>Our team and AI tools turn the design into a fast, responsive site.</p><em>Days 4–6</em></div>
+  <div class="step"><h3>Launch</h3><p>Testing, go-live, and training so you can manage content.</p><em>Day 7</em></div>
+ </div>
+</div></section>
+
+<section id="about" class="about" style="background:var(--bg2)"><div class="wrap">
+ <h2>Humans with <span class="outline">AI</span></h2>
+ <p>Creosite is a remote web studio from India, working with clients worldwide. Designers and engineers make the decisions. AI handles the repetitive work, so you get a polished site in days.</p>
+ <p>Every project includes a named contact, a fixed scope, and code you own.</p>
+ <div class="stats">
+  <div class="stat"><b>7 days</b><span>typical launch time</span></div>
+  <div class="stat"><b>50+</b><span>sites delivered</span></div>
+  <div class="stat"><b>95+</b><span>Lighthouse speed score</span></div>
+  <div class="stat"><b>100%</b><span>code ownership</span></div>
+ </div>
+ <p class="note">Numbers are placeholders. Update them with your real figures.</p>
+</div></section>
+
+<section id="contact"><div class="wrap">
+ <h2>Start a <span class="outline">project</span></h2>
+ <p class="lead">Tell us what you need. We reply within one working day.</p>
+ <div class="contact">
+  <div class="info">
+   <a href="mailto:hello@creosite.com">hello@creosite.com</a><p>For new projects and quotes</p>
+   <a href="tel:+910000000000">+91 00000 00000</a><p>Mon–Sat, 10am–7pm IST</p>
+   <a href="#contact">Book a 30 min call →</a><p>Link your calendar tool here</p>
+  </div>
+  <div>
+  <form id="form" novalidate>
+   <div class="two"><label>Name<input name="name" required autocomplete="name"></label><label>Email<input name="email" type="email" required autocomplete="email"></label></div>
+   <div><div style="font-size:14px;color:#b4c0bb;margin-bottom:8px">What do you need?</div>
+    <div class="chips"><label><input type="checkbox" name="svc" value="New website"><span>New website</span></label><label><input type="checkbox" name="svc" value="Redesign"><span>Redesign</span></label><label><input type="checkbox" name="svc" value="Online store"><span>Online store</span></label><label><input type="checkbox" name="svc" value="Web app"><span>Web app</span></label><label><input type="checkbox" name="svc" value="SEO"><span>SEO</span></label></div></div>
+   <label>Budget<select name="budget"><option>Under $1,000</option><option>$1,000 – $3,000</option><option>$3,000 – $10,000</option><option>$10,000+</option></select></label>
+   <label>Project details<textarea name="msg" required></textarea></label>
+   <p id="err" style="color:#ff8a8a;margin:0;font-size:14px" role="alert"></p>
+   <button class="pill solid" type="submit" style="justify-content:center">Send message →</button>
+  </form>
+  <div class="ok" id="ok"><h3>Your email app is ready</h3><p style="color:var(--mute)">Press send in the draft that opened. If nothing opened, write to hello@creosite.com.</p></div>
+  </div>
+ </div>
+</div></section>
+</main>
+<footer><div class="wrap"><span class="mono">© 2026 CREOSITE SOLUTIONS</span><span class="mono">EST. 2024 / INDIA · REMOTE · GLOBAL</span></div></footer>
+
+<script>
+const S=[
+ {n:"Website design",d:"Custom layouts and branding built around your customers, not a template.",i:["UI and UX design","Brand identity","Mobile-first layouts","Interactive prototypes"]},
+ {n:"Web development",d:"Fast, secure sites on modern code, with a CMS so your team can edit content.",i:["Front-end and back-end","CMS (WordPress, Webflow)","Forms and integrations","Accessibility checks"]},
+ {n:"E-commerce",d:"Online stores that load quickly and make checkout simple.",i:["Product and catalog setup","Razorpay, Stripe, PayPal","Inventory and orders","Abandoned cart emails"]},
+ {n:"Web apps",d:"Portals, dashboards and internal tools tailored to how you work.",i:["Client logins","Admin dashboards","API integrations","Automation workflows"]},
+ {n:"SEO and growth",d:"Get found on search, then measure what brings in customers.",i:["Technical SEO","Page speed tuning","Analytics setup","Conversion tracking"]},
+ {n:"Care and support",d:"We keep your site updated, backed up and secure after launch.",i:["Hosting and SSL","Monthly updates","Backups and monitoring","Team training"]}
+];
+const tabs=document.getElementById('tabs'),panel=document.getElementById('panel');
+function show(k){
+ [...tabs.children].forEach((b,j)=>b.setAttribute('aria-selected',j===k));
+ const s=S[k];panel.innerHTML='<div class="fade"><h3>'+s.n+'</h3><p>'+s.d+'</p></div><ul class="fade">'+s.i.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+}
+S.forEach((s,k)=>{const b=document.createElement('button');b.className='tab';b.setAttribute('role','tab');b.innerHTML=s.n+'<span>'+(k+1)+'/'+S.length+'</span>';b.onclick=()=>show(k);tabs.appendChild(b)});
+show(0);
+const menu=document.getElementById('menu'),links=document.getElementById('links');
+menu.onclick=()=>{const o=links.classList.toggle('open');menu.setAttribute('aria-expanded',o)};
+links.onclick=()=>links.classList.remove('open');
+document.getElementById('form').addEventListener('submit',e=>{
+ e.preventDefault();const f=e.target,err=document.getElementById('err');
+ const name=f.name.value.trim(),email=f.email.value.trim(),msg=f.msg.value.trim();
+ if(!name||!/^\S+@\S+\.\S+$/.test(email)||!msg){err.textContent='Add your name, a valid email and a short project description.';return}
+ err.textContent='';
+ const svc=[...f.querySelectorAll('[name=svc]:checked')].map(x=>x.value).join(', ')||'Not specified';
+ const body='Name: '+name+'\nEmail: '+email+'\nNeeds: '+svc+'\nBudget: '+f.budget.value+'\n\n'+msg;
+ location.href='mailto:hello@creosite.com?subject='+encodeURIComponent('New project from '+name)+'&body='+encodeURIComponent(body);
+ f.style.display='none';document.getElementById('ok').classList.add('show');
+});
+</script>
+</body>
+</html>
