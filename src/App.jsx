@@ -131,6 +131,13 @@ function CreoChat() {
     return () => window.clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (event) => { if (event.key === 'Escape') setIsOpen(false) }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen])
+
   const openChat = () => { setIsOpen(true); setShowGreeting(false) }
   const continueChat = (event) => {
     event.preventDefault()
@@ -175,9 +182,9 @@ function CreoChat() {
     if (lastUser) sendMessage({ text: lastUser.parts.filter((p) => p.type === 'text').map((p) => p.text).join('') })
   }
 
-  return <aside className="creo-chat" aria-label="Chat with Creo">
+  return <aside className={`creo-chat ${isOpen ? 'is-open' : ''}`} aria-label="Chat with Creo">
     {showGreeting && !isOpen && <button className="chat-greeting" type="button" onClick={openChat}>Hello, I’m <b>Creo</b>.<br />Do you have a query?<span>Tap to chat</span></button>}
-    {isOpen && <div className="chat-window"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small>Usually replies within a day</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div><div className="chat-content">
+    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online now</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div><div className="chat-content">
       {aiEnabled ? <>
         <div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>
         {aiMessages.map((m) => (
@@ -199,18 +206,54 @@ function CreoChat() {
         {step === 'complete' && <><div className="chat-bubble user">{message}</div><div className="chat-bubble bot">Thanks, {name}! We’ve received your message and will contact you at <b>{email}</b> soon.</div></>}
       </>}
     </div></div>}
-    <button className="chat-launcher" type="button" aria-label="Open chat with Creo" onClick={openChat}><span className="launcher-face"><i /><i /><em /></span>{!isOpen && <span className="chat-notification" />}</button>
+    <button className="chat-launcher" type="button" aria-label={isOpen ? 'Close chat with Creo' : 'Open chat with Creo'} aria-expanded={isOpen} onClick={() => (isOpen ? setIsOpen(false) : openChat())}>
+      <svg className="launcher-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /><circle cx="8.6" cy="11.4" r="1.05" fill="currentColor" /><circle cx="12" cy="11.4" r="1.05" fill="currentColor" /><circle cx="15.4" cy="11.4" r="1.05" fill="currentColor" /></svg>
+      {!isOpen && <span className="chat-notification" />}
+    </button>
   </aside>
 }
 
 
 export default function App() {
   const [activeService, setActiveService] = useState(0)
-  const [activeProject, setActiveProject] = useState(1)
+  const [activeProject, setActiveProject] = useState(() => (typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches ? 0 : 1))
+  const workGridRef = useRef(null)
+
+  useEffect(() => {
+    const grid = workGridRef.current
+    if (!grid) return
+    const media = window.matchMedia('(max-width: 900px)')
+    let frame = 0
+    const update = () => {
+      frame = 0
+      if (!media.matches) return
+      const cards = [...grid.querySelectorAll('.project-card')]
+      if (!cards.length) return
+      const left = grid.getBoundingClientRect().left
+      let next = 0
+      let distance = Infinity
+      cards.forEach((card, index) => {
+        const gap = Math.abs(card.getBoundingClientRect().left - left)
+        if (gap < distance) { distance = gap; next = index }
+      })
+      setActiveProject((current) => (current === next ? current : next))
+    }
+    const onScroll = () => { if (!frame) frame = window.requestAnimationFrame(update) }
+    const onMediaChange = () => { if (media.matches) update(); else setActiveProject(1) }
+    update()
+    grid.addEventListener('scroll', onScroll, { passive: true })
+    media.addEventListener('change', onMediaChange)
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      grid.removeEventListener('scroll', onScroll)
+      media.removeEventListener('change', onMediaChange)
+    }
+  }, [])
+
   const service = services[activeService]
   return <><Header /><main id="top">
     <section className="hero"><svg className="waves" viewBox="0 0 1440 500" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="wave-1" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#3a5774" stopOpacity=".82" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient><linearGradient id="wave-2" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#1d2938" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient></defs><path className="a" d="M0 260C220 180 420 200 560 300S900 480 1100 330 1340 160 1440 190V500H0Z" fill="url(#wave-1)" stroke="#b5c0ce" strokeOpacity=".38" strokeWidth="2" /><path className="b" d="M0 330C200 280 380 330 520 400S860 500 1040 400 1320 250 1440 270V500H0Z" fill="url(#wave-2)" opacity=".8" /></svg><div className="wrap hero-content"><div className="chip"><span className="dot" />Creosite Solutions — Websites for what’s next</div><h1><span className="w">Let’s Build</span><span className="w">Something</span><span className="o">Unforgettable.</span></h1><p className="sub">AI-powered web development for modern businesses. Beautiful websites, built in days — not months.</p><div className="built"><i>built by</i><b>humans</b><span>+</span><b className="ai-star">✦ AI</b></div><div className="ctas"><a className="pill solid" href="#work">See our work ↓</a><a className="pill dark" href="#contact">Book a 30 min call →</a></div></div><span className="mono hero-note">EST. 2024 / INDIA · REMOTE · GLOBAL</span><span className="mono hero-scroll">SCROLL ↓</span></section>
-    <section id="work" className="selected-work"><div className="wrap"><h2>Selected <span className="outline">work</span></h2><p className="lead">A few of the digital experiences we&apos;ve built for ambitious brands and communities.</p></div><div className="wrap wide"><div className="work-grid has-active-project">{projects.map((project, index) => { const isActive = activeProject === index; return <article className={`card project-card ${index !== 1 ? 'side-card' : ''} ${isActive ? 'is-active' : ''}`} key={project.name} style={{ '--brand': project.brand, '--brand-tone': project.tone }} onMouseEnter={() => setActiveProject(index)} onMouseLeave={() => setActiveProject(1)}><BrowserMock image={project.cover} name={project.name} /><div className="meta"><div><h3>{project.name}</h3><p>{project.description}</p></div><div className="project-meta"><div className="tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><a className="detail-button" href={project.url} target="_blank" rel="noreferrer" onFocus={() => setActiveProject(index)} onBlur={() => setActiveProject(1)}>Details <span>→</span></a></div></div></article>})}</div></div></section>
+    <section id="work" className="selected-work"><div className="wrap"><h2>Selected <span className="outline">work</span></h2><p className="lead">A few of the digital experiences we&apos;ve built for ambitious brands and communities.</p></div><div className="wrap wide"><div className="work-grid has-active-project" ref={workGridRef}>{projects.map((project, index) => { const isActive = activeProject === index; return <article className={`card project-card ${index !== 1 ? 'side-card' : ''} ${isActive ? 'is-active' : ''}`} key={project.name} style={{ '--brand': project.brand, '--brand-tone': project.tone }} onMouseEnter={() => setActiveProject(index)} onMouseLeave={() => setActiveProject(1)}><BrowserMock image={project.cover} name={project.name} /><div className="meta"><div><h3>{project.name}</h3><p>{project.description}</p></div><div className="project-meta"><div className="tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><a className="detail-button" href={project.url} target="_blank" rel="noreferrer" onFocus={() => setActiveProject(index)} onBlur={() => setActiveProject(1)}>Details <span>→</span></a></div></div></article>})}</div></div></section>
     <section id="solutions" className="dark-section"><div className="wrap"><h2>What we <span className="outline">build</span></h2><p className="lead">Pick a service to see what’s included.</p><div className="svc"><div className="tabs" role="tablist" aria-label="Services">{services.map((item, index) => <button className="tab" key={item.name} type="button" role="tab" aria-selected={index === activeService} onClick={() => setActiveService(index)}>{item.name}<span>{index + 1}/{services.length}</span></button>)}</div><div className="panel" role="tabpanel"><div className="fade"><h3>{service.name}</h3><p>{service.description}</p></div><ul className="fade">{service.items.map((item) => <li key={item}>{item}</li>)}</ul></div></div></div></section>
     <section id="process"><div className="wrap"><h2>From idea to <span className="outline">live</span></h2><p className="lead">A clear path with a launch date you can plan around.</p><div className="steps">{[['Discover', 'A 30 minute call on your goals, audience and brand.', 'Day 1'], ['Design', 'Layouts and a visual direction you review and approve.', 'Days 2–3'], ['Build', 'Our team and AI tools turn the design into a fast, responsive site.', 'Days 4–6'], ['Launch', 'Testing, go-live, and training so you can manage content.', 'Day 7']].map(([title, text, time]) => <div className="step" key={title}><h3>{title}</h3><p>{text}</p><em>{time}</em></div>)}</div></div></section>
     <section id="about" className="about dark-section"><div className="wrap"><div className="vision-layout"><div className="vision-copy"><span className="eyebrow">OUR PURPOSE</span><h2>Our <span className="outline">vision</span></h2><p>We want to make useful technology part of everyday business, not something that only large companies can afford or understand.</p><p>Our aim is to use AI and digital tools in practical ways that make work faster, more efficient and more affordable for small businesses. Technology only matters when it genuinely helps ordinary people solve real problems, save time and grow with confidence.</p></div><div className="vision-card"><div className="vision-orbit" aria-hidden="true"><span className="orbit-dot dot-one" /><span className="orbit-dot dot-two" /><span className="orbit-dot dot-three" /><div className="vision-core">AI<br /><small>for people</small></div></div><div className="vision-principles"><div><span>01</span><b>Useful first</b><p>Built for real daily needs.</p></div><div><span>02</span><b>Accessible by design</b><p>Made for smaller businesses too.</p></div><div><span>03</span><b>Better together</b><p>Technology that supports people.</p></div></div></div></div></div></section>
