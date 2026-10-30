@@ -4,6 +4,7 @@ import { extname, join, normalize } from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import chatHandler from './api/chat.js'
+import contactHandler from './api/contact.js'
 
 const distDir = fileURLToPath(new URL('./dist', import.meta.url))
 const port = Number(process.env.PORT) || 3000
@@ -92,6 +93,16 @@ const server = createServer(async (req, res) => {
   if (pathname === '/api/chat') {
     try {
       await sendWebResponse(res, await chatHandler(toWebRequest(req)))
+    } catch (error) {
+      console.error(error)
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end('Internal Server Error')
+    }
+    return
+  }
+  if (pathname === '/api/contact') {
+    try {
+      await sendWebResponse(res, await contactHandler(toWebRequest(req)))
     } catch (error) {
       console.error(error)
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })

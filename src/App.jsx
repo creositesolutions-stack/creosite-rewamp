@@ -90,12 +90,31 @@ function Header() {
 function ContactForm() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const submit = (event) => {
+  const [sending, setSending] = useState(false)
+  const submit = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const name = data.get('name').trim(), email = data.get('email').trim(), message = data.get('message').trim()
+    const phone = data.get('phone').trim()
     if (!name || !/^\S+@\S+\.\S+$/.test(email) || !message) return setError('Add your name, a valid email and a short project description.')
-    setError(''); setSent(true)
+    setError('')
+    setSending(true)
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone, message }),
+      })
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || 'We could not send your message right now.')
+      }
+      setSent(true)
+    } catch {
+      setError('We could not send your message right now. Please try again in a moment.')
+    } finally {
+      setSending(false)
+    }
   }
   if (sent) return <div className="ok show contact-success"><span className="success-mark">✓</span><p className="mono">MESSAGE SENT</p><h3>Thanks for reaching out.</h3><button className="send-another" type="button" onClick={() => setSent(false)}>Send another message</button></div>
   return <form onSubmit={submit} noValidate>
@@ -103,7 +122,7 @@ function ContactForm() {
     <div className="two"><label>Name<input name="name" required autoComplete="name" placeholder="Your name" /></label><label>Email<input name="email" type="email" required autoComplete="email" placeholder="you@company.com" /></label></div>
     <label>Phone number <small>(optional)</small><input name="phone" type="tel" autoComplete="tel" placeholder="+91 00000 00000" /></label>
     <label>How can we help?<textarea name="message" required placeholder="Tell us a little about your project or question..." /></label>
-    <p className="form-error" role="alert">{error}</p><button className="pill solid" type="submit">Send message →</button>
+    <p className="form-error" role="alert">{error}</p><button className="pill solid" type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send message →'}</button>
   </form>
 }
 
@@ -257,6 +276,6 @@ export default function App() {
     <section id="solutions" className="dark-section"><div className="wrap"><h2>What we <span className="outline">build</span></h2><p className="lead">Pick a service to see what’s included.</p><div className="svc"><div className="tabs" role="tablist" aria-label="Services">{services.map((item, index) => <button className="tab" key={item.name} type="button" role="tab" aria-selected={index === activeService} onClick={() => setActiveService(index)}>{item.name}<span>{index + 1}/{services.length}</span></button>)}</div><div className="panel" role="tabpanel"><div className="fade"><h3>{service.name}</h3><p>{service.description}</p></div><ul className="fade">{service.items.map((item) => <li key={item}>{item}</li>)}</ul></div></div></div></section>
     <section id="process"><div className="wrap"><h2>From idea to <span className="outline">live</span></h2><p className="lead">A clear path with a launch date you can plan around.</p><div className="steps">{[['Discover', 'A 30 minute call on your goals, audience and brand.', 'Day 1'], ['Design', 'Layouts and a visual direction you review and approve.', 'Days 2–3'], ['Build', 'Our team and AI tools turn the design into a fast, responsive site.', 'Days 4–6'], ['Launch', 'Testing, go-live, and training so you can manage content.', 'Day 7']].map(([title, text, time]) => <div className="step" key={title}><h3>{title}</h3><p>{text}</p><em>{time}</em></div>)}</div></div></section>
     <section id="about" className="about dark-section"><div className="wrap"><div className="vision-layout"><div className="vision-copy"><span className="eyebrow">OUR PURPOSE</span><h2>Our <span className="outline">vision</span></h2><p>We want to make useful technology part of everyday business, not something that only large companies can afford or understand.</p><p>Our aim is to use AI and digital tools in practical ways that make work faster, more efficient and more affordable for small businesses. Technology only matters when it genuinely helps ordinary people solve real problems, save time and grow with confidence.</p></div><div className="vision-card"><div className="vision-orbit" aria-hidden="true"><span className="orbit-dot dot-one" /><span className="orbit-dot dot-two" /><span className="orbit-dot dot-three" /><div className="vision-core">AI<br /><small>for people</small></div></div><div className="vision-principles"><div><span>01</span><b>Useful first</b><p>Built for real daily needs.</p></div><div><span>02</span><b>Accessible by design</b><p>Made for smaller businesses too.</p></div><div><span>03</span><b>Better together</b><p>Technology that supports people.</p></div></div></div></div></div></section>
-    <section id="contact"><div className="wrap"><h2>Let’s start a <span className="outline">conversation</span></h2><p className="lead">Have a project, question or idea? Send us a note and we’ll be in touch shortly.</p><div className="contact"><div className="info"><p className="contact-kicker">GET IN TOUCH</p><a href={`mailto:${contact.email}`}>{contact.email}</a><p>For projects, questions and partnerships</p><a href={phoneHref}>{contact.phone}</a><p>{contact.hours}</p><a className="whatsapp-option" href={whatsappHref} target="_blank" rel="noreferrer"><span className="whatsapp-icon">◔</span><span><b>WhatsApp us now</b><small>Start a quick conversation</small></span><strong>→</strong></a></div><ContactForm /></div></div></section>
+    <section id="contact"><div className="wrap"><h2>Let’s start a <span className="outline">conversation</span></h2><p className="lead">Have a project, question or idea? Send us a note and we’ll be in touch shortly.</p><div className="contact"><div className="info"><p className="contact-kicker">GET IN TOUCH</p><a href={`mailto:${contact.email}`}>{contact.email}</a><p>For projects, questions and partnerships</p><a href={phoneHref}>{contact.phone}</a><p>{contact.hours}</p><a className="whatsapp-option" href={whatsappHref} target="_blank" rel="noreferrer"><span className="whatsapp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.48 1.33 4.99L2 22l5.14-1.31A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm5.81 14.24c-.24.68-1.41 1.31-1.96 1.39-.5.07-1.13.1-1.83-.12-.42-.14-.97-.32-1.67-.62-2.93-1.27-4.83-4.22-4.98-4.43-.15-.2-1.19-1.59-1.19-3.03 0-1.44.76-2.15 1.02-2.44.27-.29.58-.37.78-.37h.57c.18 0 .42-.07.66.51.24.58.83 2 .9 2.14.07.14.12.32.03.51-.1.19-.14.31-.28.49-.15.17-.31.39-.44.53-.15.15-.31.31-.13.54.14.22.64 1.05 1.38 1.7.95.84 1.74 1.1 1.99 1.23.24.13.39.11.54-.07.15-.18.63-.73.8-.98.17-.25.33-.21.57-.12.24.1 1.52.72 1.78.85.26.13.43.2.49.31.06.12.06.69-.18 1.36z"/></svg></span><span><b>WhatsApp us now</b><small>Start a quick conversation</small></span><strong>→</strong></a></div><ContactForm /></div></div></section>
   </main><footer><div className="wrap"><span className="mono">© 2026 CREOSITE SOLUTIONS</span><span className="mono">EST. 2024 / INDIA · REMOTE · GLOBAL</span></div></footer><CreoChat /></>
 }
