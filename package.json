@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.105",
+    "@ai-sdk/react": "^4.0.161",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "ai": "^7.0.157",
     "react": "latest",
-    "react-dom": "latest"
-  },
-  "devDependencies": {}
+    "react-dom": "latest",
+    "vite": "latest"
+  }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useChat } from '@ai-sdk/react'
 import highroadCover from '../drinkhighroad.png'
 import dreamsCover from '../dreamsglobalholidays.png'
 import aktpaCover from '../aktpa.png'
@@ -84,11 +85,15 @@ function ContactForm() {
 function CreoChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)
+  const [aiEnabled, setAiEnabled] = useState(true)
   const [step, setStep] = useState('message')
   const [message, setMessage] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
+  const [input, setInput] = useState('')
+  const { messages: aiMessages, sendMessage, status, error: aiError, clearError, regenerate } = useChat({ api: '/api/chat' })
+  const aiBusy = status === 'submitted' || status === 'streaming'
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowGreeting(false), 9000)
@@ -107,12 +112,51 @@ function CreoChat() {
     setError(''); setStep('complete')
   }
 
+  const sendAiMessage = (event) => {
+    event.preventDefault()
+    const text = input.trim()
+    if (!text || aiBusy) return
+    setInput('')
+    if (aiError) clearError()
+    sendMessage({ text })
+  }
+
+  const retryAiMessage = () => {
+    if (!aiError) return
+    clearError()
+    const last = aiMessages[aiMessages.length - 1]
+    if (last?.role === 'assistant') { regenerate(); return }
+    const lastUser = [...aiMessages].reverse().find((m) => m.role === 'user')
+    if (lastUser) sendMessage({ text: lastUser.parts.filter((p) => p.type === 'text').map((p) => p.text).join('') })
+  }
+
   return <aside className="creo-chat" aria-label="Chat with Creo">
     {showGreeting && !isOpen && <button className="chat-greeting" type="button" onClick={openChat}>Hello, I’m <b>Creo</b>.<br />Do you have a query?<span>Tap to chat</span></button>}
-    {isOpen && <div className="chat-window"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small>Usually replies within a day</small></div></div><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div><div className="chat-content"><div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>{step === 'message' && <form onSubmit={continueChat}><label className="chat-label">Tell us a little about what you need<textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Type your message…" autoFocus /></label><p className="chat-error">{error}</p><button className="chat-send" type="submit">Continue →</button></form>}{step === 'contact' && <form onSubmit={continueChat}><div className="chat-bubble user">{message}</div><div className="chat-bubble bot">Thanks. Where can we reach you?</div><label className="chat-label">Your name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" autoComplete="name" autoFocus /></label><label className="chat-label">Email address<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="you@company.com" autoComplete="email" /></label><p className="chat-error">{error}</p><button className="chat-send" type="submit">Send request →</button></form>}{step === 'complete' && <><div className="chat-bubble user">{message}</div><div className="chat-bubble bot">Thanks, {name}! We’ve received your message and will contact you at <b>{email}</b> soon.</div></>}</div></div>}
+    {isOpen && <div className="chat-window"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small>Usually replies within a day</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div><div className="chat-content">
+      {aiEnabled ? <>
+        <div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>
+        {aiMessages.map((m) => (
+          <div key={m.id} className={`chat-bubble ${m.role === 'user' ? 'user' : 'bot'}`}>
+            {m.parts.map((part, index) => part.type === 'text' ? <span key={index}>{part.text}</span> : null)}
+          </div>
+        ))}
+        {aiError && <div className="chat-bubble bot chat-error-bubble" role="alert">Sorry, I couldn’t reply just now. <button type="button" className="chat-retry" onClick={retryAiMessage}>Try again</button></div>}
+        {aiBusy && <div className="chat-bubble bot chat-typing" aria-live="polite">Creo is typing<span>.</span><span>.</span><span>.</span></div>}
+        <form onSubmit={sendAiMessage} className="chat-form">
+          <input className="chat-input" value={input} onChange={(e) => setInput(e.target.value)} placeholder={aiBusy ? 'Creo is replying…' : 'Say something...'} autoFocus disabled={aiBusy} />
+          <button className="chat-send" type="submit" disabled={aiBusy || !input.trim()}>Send →</button>
+        </form>
+      </> : <>
+        <div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>
+        {step === 'message' && <form onSubmit={continueChat}><label className="chat-label">Tell us a little about what you need<textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Type your message…" autoFocus /></label><p className="chat-error">{error}</p><button className="chat-send" type="submit">Continue →</button></form>}
+        {step === 'contact' && <form onSubmit={continueChat}><div className="chat-bubble user">{message}</div><div className="chat-bubble bot">Thanks. Where can we reach you?</div><label className="chat-label">Your name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" autoComplete="name" autoFocus /></label><label className="chat-label">Email address<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="you@company.com" autoComplete="email" /></label><p className="chat-error">{error}</p><button className="chat-send" type="submit">Send request →</button></form>}
+        {step === 'complete' && <><div className="chat-bubble user">{message}</div><div className="chat-bubble bot">Thanks, {name}! We’ve received your message and will contact you at <b>{email}</b> soon.</div></>}
+      </>}
+    </div></div>}
     <button className="chat-launcher" type="button" aria-label="Open chat with Creo" onClick={openChat}><span className="launcher-face"><i /><i /><em /></span>{!isOpen && <span className="chat-notification" />}</button>
   </aside>
 }
+
 
 export default function App() {
   const [activeService, setActiveService] = useState(0)
