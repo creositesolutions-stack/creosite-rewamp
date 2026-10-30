@@ -142,7 +142,7 @@ function CreoChat() {
     api: '/api/chat',
     headers: () => ({ 'x-session-id': getSessionId() }),
   }), [])
-  const { messages: aiMessages, sendMessage, status, error: aiError, clearError, regenerate } = useChat({ transport })
+  const { messages: aiMessages, setMessages, sendMessage, status, error: aiError, clearError, regenerate } = useChat({ transport })
   const aiBusy = status === 'submitted' || status === 'streaming'
 
   useEffect(() => {
@@ -158,6 +158,20 @@ function CreoChat() {
   }, [isOpen])
 
   const openChat = () => { setIsOpen(true); setShowGreeting(false) }
+  const clearChat = () => {
+    setMessages([])
+    clearError()
+    setInput('')
+    setInputError('')
+    requestTimes.current = []
+    setError('')
+    if (!aiEnabled) {
+      setStep('message')
+      setMessage('')
+      setName('')
+      setEmail('')
+    }
+  }
   const continueChat = (event) => {
     event.preventDefault()
     if (step === 'message') {
@@ -203,7 +217,7 @@ function CreoChat() {
 
   return <aside className={`creo-chat ${isOpen ? 'is-open' : ''}`} aria-label="Chat with Creo">
     {showGreeting && !isOpen && <button className="chat-greeting" type="button" onClick={openChat}>Hello, I’m <b>Creo</b>.<br />Do you have a query?<span>Tap to chat</span></button>}
-    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online now</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div><div className="chat-content">
+    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online now</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><div className="chat-actions"><button type="button" className="chat-clear" onClick={clearChat}>Clear</button><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div></div><div className="chat-content">
       {aiEnabled ? <>
         <div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>
         {aiMessages.map((m) => (

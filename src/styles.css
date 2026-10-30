@@ -127,6 +127,19 @@ header { border-bottom-color:#1e252e; }.links { color:#bfc7d1; }.ghost { border-
   .chat-send { min-height:46px; padding:0 16px; font-size:15px; }
 }
 
+.chat-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.chat-actions { display:flex; align-items:center; gap:8px; }
+.chat-clear { padding:0 12px; height:30px; border:1px solid #445a74; border-radius:999px; color:#d8e2ec; background:rgba(66,88,112,.18); font-size:12px; cursor:pointer; transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s ease; }
+.chat-clear:hover { border-color:var(--g1); color:var(--g1); background:rgba(110,141,173,.14); transform:translateY(-1px); }
+.chat-close { display:grid; place-items:center; width:34px; height:34px; border:1px solid #445a74; border-radius:50%; color:#d8e2ec; background:rgba(66,88,112,.14); cursor:pointer; transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s ease; }
+.chat-close:hover { border-color:var(--g1); color:var(--g1); background:rgba(110,141,173,.14); transform:translateY(-1px); }
+
+@media (max-width:900px) {
+  .chat-actions { gap:6px; }
+  .chat-clear { padding:0 10px; height:28px; font-size:11px; }
+  .chat-close { width:32px; height:32px; }
+}
+
 @media (max-width:380px) {
   .wrap,.wrap.wide { padding:0 14px; }
   .hero h1 { font-size:clamp(38px,12.5vw,52px); }
