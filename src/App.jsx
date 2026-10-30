@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
+import { GUARDRAIL_MESSAGES, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, validateChatText } from '../shared/guardrails.js'
 import highroadCover from '../drinkhighroad.png'
 import dreamsCover from '../dreamsglobalholidays.png'
 import aktpaCover from '../aktpa.png'
@@ -12,6 +14,20 @@ const contact = {
 }
 const phoneHref = `tel:${contact.phone.replace(/[^\d+]/g, '')}`
 const whatsappHref = `https://wa.me/${contact.whatsapp.replace(/\D/g, '')}`
+
+function getSessionId() {
+  try {
+    const key = 'creo-chat-session'
+    let id = window.sessionStorage.getItem(key)
+    if (!id) {
+      id = window.crypto?.randomUUID?.() || `s-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      window.sessionStorage.setItem(key, id)
+    }
+    return id
+  } catch {
+    return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  }
+}
 
 const services = [
   {
@@ -101,7 +117,13 @@ function CreoChat() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [input, setInput] = useState('')
-  const { messages: aiMessages, sendMessage, status, error: aiError, clearError, regenerate } = useChat({ api: '/api/chat' })
+  const [inputError, setInputError] = useState('')
+  const requestTimes = useRef([])
+  const transport = useMemo(() => new DefaultChatTransport({
+    api: '/api/chat',
+    headers: () => ({ 'x-session-id': getSessionId() }),
+  }), [])
+  const { messages: aiMessages, sendMessage, status, error: aiError, clearError, regenerate } = useChat({ transport })
   const aiBusy = status === 'submitted' || status === 'streaming'
 
   useEffect(() => {
@@ -125,6 +147,20 @@ function CreoChat() {
     event.preventDefault()
     const text = input.trim()
     if (!text || aiBusy) return
+
+    const problem = validateChatText(text)
+    if (problem) { setInputError(problem); return }
+
+    const now = Date.now()
+    const recent = requestTimes.current.filter((time) => now - time < RATE_LIMIT_WINDOW_MS)
+    if (recent.length >= RATE_LIMIT_MAX) {
+      const wait = Math.max(1, Math.ceil((RATE_LIMIT_WINDOW_MS - (now - recent[0])) / 1000))
+      setInputError(`${GUARDRAIL_MESSAGES.tooMany} Try again in ${wait} second${wait === 1 ? '' : 's'}.`)
+      return
+    }
+
+    requestTimes.current = [...recent, now]
+    setInputError('')
     setInput('')
     if (aiError) clearError()
     sendMessage({ text })
@@ -149,10 +185,11 @@ function CreoChat() {
             {m.parts.map((part, index) => part.type === 'text' ? <span key={index}>{part.text}</span> : null)}
           </div>
         ))}
-        {aiError && <div className="chat-bubble bot chat-error-bubble" role="alert">Sorry, I couldn’t reply just now. <button type="button" className="chat-retry" onClick={retryAiMessage}>Try again</button></div>}
+        {aiError && <div className="chat-bubble bot chat-error-bubble" role="alert">{/^(Please|You)/.test(aiError.message || '') ? aiError.message : 'Sorry, I couldn’t reply just now.'} {aiError.statusCode !== 429 && <button type="button" className="chat-retry" onClick={retryAiMessage}>Try again</button>}</div>}
         {aiBusy && <div className="chat-bubble bot chat-typing" aria-live="polite">Creo is typing<span>.</span><span>.</span><span>.</span></div>}
+        {inputError && <p className="chat-error chat-input-error" role="alert">{inputError}</p>}
         <form onSubmit={sendAiMessage} className="chat-form">
-          <input className="chat-input" value={input} onChange={(e) => setInput(e.target.value)} placeholder={aiBusy ? 'Creo is replying…' : 'Say something...'} autoFocus disabled={aiBusy} />
+          <input className="chat-input" value={input} onChange={(e) => { setInput(e.target.value); if (inputError) setInputError('') }} placeholder={aiBusy ? 'Creo is replying…' : 'Say something...'} autoFocus disabled={aiBusy} />
           <button className="chat-send" type="submit" disabled={aiBusy || !input.trim()}>Send →</button>
         </form>
       </> : <>

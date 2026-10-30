@@ -41,6 +41,7 @@ header { border-bottom-color:#1e252e; }.links { color:#bfc7d1; }.ghost { border-
 .chat-form { display:flex; gap:8px; margin-top:12px; align-items:center; }
 .chat-input { flex:1; padding:10px 11px; border:1px solid #374d64; border-radius:9px; color:#e4eaf0; background:#0d1823; font-size:13px; }
 .chat-error-bubble { color:#e6b0b0; background:#3a2230; }
+.chat-input-error { margin:12px 0 0; }
 .chat-retry { margin-left:4px; padding:0; border:0; color:#e6edf2; background:none; font:inherit; font-weight:700; text-decoration:underline; cursor:pointer; }
 .chat-typing span { animation:chat-blink 1.2s infinite; }
 .chat-typing span:nth-child(2) { animation-delay:.2s; }
