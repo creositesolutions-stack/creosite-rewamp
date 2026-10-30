@@ -1,3 +1,5 @@
+export const config = { runtime: 'edge' }
+
 function plainTextResponse(message, status) {
   return new Response(message, {
     status,
