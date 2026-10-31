@@ -47,8 +47,8 @@ export function validateChatText(text) {
 
 export function hasUnsupportedParts(messages) {
   return messages.some((message) => {
-    if (Array.isArray(message.experimental_attachments) && message.experimental_attachments.length > 0) return true
-    if (!Array.isArray(message.parts)) return false
+    if (Array.isArray(message?.experimental_attachments) && message.experimental_attachments.length > 0) return true
+    if (!Array.isArray(message?.parts)) return false
     return message.parts.some((part) => {
       if (part?.type === 'file' || part?.type === 'image') return true
       return typeof part?.text === 'string' && /data:[^\s;]+;base64,/i.test(part.text)

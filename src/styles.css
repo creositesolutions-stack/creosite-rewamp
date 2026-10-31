@@ -131,6 +131,7 @@ header { border-bottom-color:#1e252e; }.links { color:#bfc7d1; }.ghost { border-
 .chat-actions { display:flex; align-items:center; gap:8px; }
 .chat-clear { padding:0 12px; height:30px; border:1px solid #445a74; border-radius:999px; color:#d8e2ec; background:rgba(66,88,112,.18); font-size:12px; cursor:pointer; transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s ease; }
 .chat-clear:hover { border-color:var(--g1); color:var(--g1); background:rgba(110,141,173,.14); transform:translateY(-1px); }
+.chat-history-error { margin:0; padding:6px 14px; color:#e6a2a2; background:#1a2735; font-size:11px; }
 .chat-close { display:grid; place-items:center; width:34px; height:34px; border:1px solid #445a74; border-radius:50%; color:#d8e2ec; background:rgba(66,88,112,.14); cursor:pointer; transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s ease; }
 .chat-close:hover { border-color:var(--g1); color:var(--g1); background:rgba(110,141,173,.14); transform:translateY(-1px); }
 

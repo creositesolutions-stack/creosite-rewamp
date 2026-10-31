@@ -1,13 +1,22 @@
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
-import { extname, join, normalize } from 'node:path'
-import { Readable } from 'node:stream'
+import { extname, join, normalize, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import chatHandler from './api/chat.js'
 import contactHandler from './api/contact.js'
+import conversationsHandler from './api/conversations.js'
+import conversationHandler from './api/conversation.js'
+import { serveNodeRequest } from './server/http.js'
 
 const distDir = fileURLToPath(new URL('./dist', import.meta.url))
 const port = Number(process.env.PORT) || 3000
+
+const apiRoutes = new Map([
+  ['/api/chat', chatHandler],
+  ['/api/contact', contactHandler],
+  ['/api/conversations', conversationsHandler],
+  ['/api/conversation', conversationHandler],
+])
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -23,41 +32,11 @@ const contentTypes = {
   '.woff2': 'font/woff2',
 }
 
-function toWebRequest(req) {
-  const headers = new Headers()
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (value) headers.set(key, Array.isArray(value) ? value.join(',') : value)
-  }
-  const url = `http://${req.headers.host || 'localhost'}${req.url}`
-  if (req.method === 'GET' || req.method === 'HEAD') {
-    return new Request(url, { method: req.method, headers })
-  }
-  return new Request(url, { method: req.method, headers, body: Readable.toWeb(req), duplex: 'half' })
-}
-
-async function sendWebResponse(res, response) {
-  res.statusCode = response.status
-  response.headers.forEach((value, key) => res.setHeader(key, value))
-  if (!response.body) {
-    res.end()
-    return
-  }
-  const reader = response.body.getReader()
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      res.write(Buffer.from(value))
-    }
-  } finally {
-    res.end()
-  }
-}
-
 async function serveStatic(req, res) {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)
-  const file = normalize(join(distDir, pathname))
-  if (!file.startsWith(distDir)) {
+  const file = normalize(resolve(distDir, `.${pathname}`))
+  const distPrefix = distDir.endsWith(sep) ? distDir : `${distDir}${sep}`
+  if (file !== distDir && !file.startsWith(distPrefix)) {
     res.writeHead(403)
     res.end('Forbidden')
     return
@@ -89,27 +68,27 @@ async function serveStatic(req, res) {
 }
 
 const server = createServer(async (req, res) => {
-  const { pathname } = new URL(req.url, 'http://localhost')
-  if (pathname === '/api/chat') {
-    try {
-      await sendWebResponse(res, await chatHandler(toWebRequest(req)))
-    } catch (error) {
-      console.error(error)
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
-      res.end('Internal Server Error')
-    }
+  let pathname
+  try {
+    pathname = new URL(req.url, 'http://localhost').pathname
+  } catch {
+    res.writeHead(400)
+    res.end('Bad Request')
     return
   }
-  if (pathname === '/api/contact') {
-    try {
-      await sendWebResponse(res, await contactHandler(toWebRequest(req)))
-    } catch (error) {
-      console.error(error)
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
-      res.end('Internal Server Error')
-    }
+
+  const apiHandler = apiRoutes.get(pathname)
+  if (apiHandler) {
+    await serveNodeRequest(apiHandler, req, res)
     return
   }
+
+  if (pathname.startsWith('/api/')) {
+    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify({ error: 'not_found', message: 'Not found.' }))
+    return
+  }
+
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405)
     res.end('Method Not Allowed')

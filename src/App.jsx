@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { GUARDRAIL_MESSAGES, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, validateChatText } from '../shared/guardrails.js'
@@ -15,18 +15,36 @@ const contact = {
 const phoneHref = `tel:${contact.phone.replace(/[^\d+]/g, '')}`
 const whatsappHref = `https://wa.me/${contact.whatsapp.replace(/\D/g, '')}`
 
+const SESSION_STORAGE_KEY = 'creo-chat-session'
+
 function getSessionId() {
   try {
-    const key = 'creo-chat-session'
-    let id = window.sessionStorage.getItem(key)
+    let id = window.sessionStorage.getItem(SESSION_STORAGE_KEY)
     if (!id) {
       id = window.crypto?.randomUUID?.() || `s-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      window.sessionStorage.setItem(key, id)
+      window.sessionStorage.setItem(SESSION_STORAGE_KEY, id)
     }
     return id
   } catch {
     return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`
   }
+}
+
+const CONVERSATION_STORAGE_KEY = 'creo-chat-conversation'
+
+function getStoredConversationId() {
+  try {
+    return window.sessionStorage.getItem(CONVERSATION_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function storeConversationId(id) {
+  try {
+    if (id) window.sessionStorage.setItem(CONVERSATION_STORAGE_KEY, id)
+    else window.sessionStorage.removeItem(CONVERSATION_STORAGE_KEY)
+  } catch {}
 }
 
 const services = [
@@ -138,12 +156,107 @@ function CreoChat({ intent }) {
   const [input, setInput] = useState('')
   const [inputError, setInputError] = useState('')
   const requestTimes = useRef([])
+  const [conversationId, setConversationIdState] = useState(() => getStoredConversationId())
+  const conversationIdRef = useRef(conversationId)
+  const [persistenceEnabled, setPersistenceEnabled] = useState(null)
+  const [historyError, setHistoryError] = useState('')
+  const conversationCreationRef = useRef(null)
+
+  const setConversationId = (id) => {
+    const nextId = id || ''
+    conversationIdRef.current = nextId
+    setConversationIdState(nextId)
+    storeConversationId(nextId)
+  }
+
   const transport = useMemo(() => new DefaultChatTransport({
     api: '/api/chat',
     headers: () => ({ 'x-session-id': getSessionId() }),
+    prepareSendMessagesRequest: ({ id, messages, trigger, messageId }) => ({
+      body: {
+        id,
+        messages,
+        trigger,
+        messageId,
+        ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
+      },
+    }),
   }), [])
-  const { messages: aiMessages, setMessages, sendMessage, status, error: aiError, clearError, regenerate } = useChat({ transport })
+  const { messages: aiMessages, setMessages, sendMessage, status, error: aiError, clearError, regenerate, stop } = useChat({ transport })
   const aiBusy = status === 'submitted' || status === 'streaming'
+
+  const ensureConversation = useCallback(async () => {
+    if (conversationIdRef.current) return conversationIdRef.current
+    if (persistenceEnabled === false) return null
+    if (conversationCreationRef.current) return conversationCreationRef.current
+
+    const creation = (async () => {
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        if (response.status === 503 && payload?.error === 'storage_not_configured') {
+          setPersistenceEnabled(false)
+          return null
+        }
+        throw new Error('Could not start a conversation.')
+      }
+
+      const data = await response.json()
+      const id = data?.conversation?.id
+      if (!id) throw new Error('Could not start a conversation.')
+
+      setConversationId(id)
+      setPersistenceEnabled(true)
+      return id
+    })()
+
+    conversationCreationRef.current = creation
+    try {
+      return await creation
+    } finally {
+      if (conversationCreationRef.current === creation) conversationCreationRef.current = null
+    }
+  }, [persistenceEnabled])
+
+  useEffect(() => {
+    let cancelled = false
+    const storedId = conversationIdRef.current
+
+    const boot = async () => {
+      if (!storedId) return
+      try {
+        const detail = await fetch(`/api/conversation?id=${encodeURIComponent(storedId)}`)
+        if (cancelled) return
+
+        if (detail.ok) {
+          const payload = await detail.json()
+          setPersistenceEnabled(true)
+          setMessages(Array.isArray(payload.messages) ? payload.messages : [])
+          return
+        }
+
+        if (detail.status === 404) {
+          setConversationId('')
+          setMessages([])
+        } else if (detail.status === 503) {
+          setPersistenceEnabled(false)
+          setConversationId('')
+        } else {
+          setHistoryError('Could not load the current chat.')
+        }
+      } catch {
+        if (!cancelled) setHistoryError('Could not load the current chat.')
+      }
+    }
+
+    boot()
+    return () => { cancelled = true }
+  }, [setMessages])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowGreeting(false), 9000)
@@ -166,18 +279,37 @@ function CreoChat({ intent }) {
     setAiEnabled(true)
     setInputError('')
     if (aiError) clearError()
-    if (!validateChatText(intent.prompt)) {
-      if (aiBusy) setInput(intent.prompt)
-      else sendMessage({ text: intent.prompt })
+    if (validateChatText(intent.prompt)) return
+
+    if (aiBusy) {
+      setInput(intent.prompt)
+      return
     }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        await ensureConversation()
+        if (!cancelled) sendMessage({ text: intent.prompt })
+      } catch {
+        if (!cancelled) setInputError('Chat is temporarily unavailable. Please try again in a moment.')
+      }
+    })()
+
+    return () => { cancelled = true }
   }, [intent])
 
   const openChat = () => { setIsOpen(true); setShowGreeting(false) }
-  const clearChat = () => {
+
+  const startNewConversation = () => {
+    stop()
+    try { window.sessionStorage.removeItem(SESSION_STORAGE_KEY) } catch {}
+    setConversationId('')
     setMessages([])
     clearError()
     setInput('')
     setInputError('')
+    setHistoryError('')
     requestTimes.current = []
     setError('')
     if (!aiEnabled) {
@@ -187,6 +319,9 @@ function CreoChat({ intent }) {
       setEmail('')
     }
   }
+
+  const clearChat = () => startNewConversation()
+
   const continueChat = (event) => {
     event.preventDefault()
     if (step === 'message') {
@@ -198,7 +333,7 @@ function CreoChat({ intent }) {
     setError(''); setStep('complete')
   }
 
-  const sendAiMessage = (event) => {
+  const sendAiMessage = async (event) => {
     event.preventDefault()
     const text = input.trim()
     if (!text || aiBusy) return
@@ -218,21 +353,31 @@ function CreoChat({ intent }) {
     setInputError('')
     setInput('')
     if (aiError) clearError()
-    sendMessage({ text })
+
+    try {
+      await ensureConversation()
+      sendMessage({ text })
+    } catch {
+      setInput(text)
+      setInputError('Chat is temporarily unavailable. Please try again in a moment.')
+    }
   }
 
-  const retryAiMessage = () => {
+  const retryAiMessage = async () => {
     if (!aiError) return
     clearError()
-    const last = aiMessages[aiMessages.length - 1]
-    if (last?.role === 'assistant') { regenerate(); return }
-    const lastUser = [...aiMessages].reverse().find((m) => m.role === 'user')
-    if (lastUser) sendMessage({ text: lastUser.parts.filter((p) => p.type === 'text').map((p) => p.text).join('') })
+
+    try {
+      await ensureConversation()
+      regenerate()
+    } catch {
+      setInputError('Chat is temporarily unavailable. Please try again in a moment.')
+    }
   }
 
   return <aside className={`creo-chat ${isOpen ? 'is-open' : ''}`} aria-label="Chat with Creo">
     {showGreeting && !isOpen && <button className="chat-greeting" type="button" onClick={openChat}>Hello, I’m <b>Creo</b>.<br />Do you have a query?<span>Tap to chat</span></button>}
-    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online now</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><div className="chat-actions"><button type="button" className="chat-clear" onClick={clearChat}>Clear</button><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div></div><div className="chat-content">
+    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><div className="chat-actions"><button type="button" className="chat-clear" onClick={clearChat}>Clear</button><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div></div>{historyError && <p className="chat-history-error" role="alert">{historyError}</p>}<div className="chat-content">
       {aiEnabled ? <>
         <div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>
         {aiMessages.map((m) => (
@@ -241,10 +386,10 @@ function CreoChat({ intent }) {
           </div>
         ))}
         {aiError && <div className="chat-bubble bot chat-error-bubble" role="alert">{/^(Please|You)/.test(aiError.message || '') ? aiError.message : 'Sorry, I couldn’t reply just now.'} {aiError.statusCode !== 429 && <button type="button" className="chat-retry" onClick={retryAiMessage}>Try again</button>}</div>}
-        {aiBusy && <div className="chat-bubble bot chat-typing" aria-live="polite">Creo is typing<span>.</span><span>.</span><span>.</span></div>}
+        {aiBusy && <div className="chat-bubble bot chat-typing" role="status" aria-label="Creo is typing"><span>.</span><span>.</span><span>.</span></div>}
         {inputError && <p className="chat-error chat-input-error" role="alert">{inputError}</p>}
         <form onSubmit={sendAiMessage} className="chat-form">
-          <input className="chat-input" value={input} onChange={(e) => { setInput(e.target.value); if (inputError) setInputError('') }} placeholder={aiBusy ? 'Creo is replying…' : 'Say something...'} autoFocus disabled={aiBusy} />
+          <input className="chat-input" value={input} onChange={(e) => { setInput(e.target.value); if (inputError) setInputError('') }} placeholder={aiBusy ? 'Creo is typing…' : 'Say something...'} autoFocus disabled={aiBusy} />
           <button className="chat-send" type="submit" disabled={aiBusy || !input.trim()}>Send →</button>
         </form>
       </> : <>
