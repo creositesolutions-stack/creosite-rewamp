@@ -147,3 +147,72 @@ header { border-bottom-color:#1e252e; }.links { color:#bfc7d1; }.ghost { border-
   .pill { font-size:14px; }
   .chat-greeting { width:calc(100vw - 32px); }
 }
+
+/* ---------- Ask Creo project button ---------- */
+.selected-work .project-meta { justify-content:space-between; }
+.ask-creo {
+  position:relative;
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  gap:7px;
+  padding:8px 14px;
+  overflow:hidden;
+  isolation:isolate;
+  border:1px solid transparent;
+  border-radius:999px;
+  color:#eaf2f9;
+  background:
+    linear-gradient(135deg,rgba(45,68,91,.96),rgba(21,32,45,.96)) padding-box,
+    linear-gradient(135deg,rgba(186,207,228,.9),rgba(94,128,164,.32) 45%,rgba(186,207,228,.9)) border-box;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.01em;
+  cursor:pointer;
+  transition:transform .3s ease,box-shadow .3s ease,color .3s ease;
+}
+.ask-creo::before {
+  content:'';
+  position:absolute;
+  inset:-140% -50%;
+  z-index:0;
+  background:linear-gradient(110deg,transparent 35%,rgba(188,216,241,.4) 50%,transparent 65%);
+  transform:translateX(-65%) rotate(8deg);
+  transition:transform .65s ease;
+}
+.ask-creo > span { position:relative; z-index:1; }
+.ask-creo:hover {
+  color:#fff;
+  transform:translateY(-2px);
+  box-shadow:0 8px 22px rgba(0,0,0,.35),0 0 24px rgba(125,164,202,.45),inset 0 0 16px rgba(143,181,216,.18);
+}
+.ask-creo:hover::before { transform:translateX(65%) rotate(8deg); }
+.ask-creo:active { transform:translateY(0) scale(.98); }
+.ask-creo-icon {
+  font-size:14px;
+  line-height:1;
+  color:#bcd6ee;
+  filter:drop-shadow(0 0 6px rgba(146,184,220,.8));
+  animation:ask-sparkle 2.8s ease-in-out infinite;
+}
+.ask-creo:hover .ask-creo-icon { animation:none; color:#fff; transform:rotate(90deg) scale(1.2); transition:transform .35s ease,color .35s ease; }
+@keyframes ask-sparkle {
+  0%,100% { opacity:.65; transform:scale(.88) rotate(0); }
+  50% { opacity:1; transform:scale(1.12) rotate(12deg); }
+}
+
+/* Equal-height project cards on phones and tablets. */
+@media (max-width:900px) {
+  .selected-work .work-grid { align-items:stretch; }
+  .selected-work .project-card { display:flex; height:100%; flex-direction:column; }
+  .selected-work .project-card .shot { flex:0 0 auto; }
+  .selected-work .project-card .meta { flex:1 1 auto; min-height:0; }
+  .selected-work .project-card .project-meta { margin-top:auto; }
+}
+
+@media (max-width:640px) {
+  .ask-creo { padding:7px 12px; font-size:12px; }
+  .ask-creo-icon { font-size:13px; }
+  .selected-work .detail-button { padding:7px 12px; font-size:12px; }
+  .selected-work .detail-button span { font-size:14px; }
+}
