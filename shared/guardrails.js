@@ -1,4 +1,4 @@
-export const MAX_WORDS = 20
+export const MAX_WORDS = 120
 export const RATE_LIMIT_MAX = 10
 export const RATE_LIMIT_WINDOW_MS = 60_000
 

@@ -6,6 +6,8 @@ import chatHandler from './api/chat.js'
 import contactHandler from './api/contact.js'
 import conversationsHandler from './api/conversations.js'
 import conversationHandler from './api/conversation.js'
+import ideasHandler from './api/ideas.js'
+import ephemeralChatHandler from './api/ephemeral-chat.js'
 import { serveNodeRequest } from './server/http.js'
 
 const distDir = fileURLToPath(new URL('./dist', import.meta.url))
@@ -16,6 +18,8 @@ const apiRoutes = new Map([
   ['/api/contact', contactHandler],
   ['/api/conversations', conversationsHandler],
   ['/api/conversation', conversationHandler],
+  ['/api/ideas', ideasHandler],
+  ['/api/ephemeral-chat', ephemeralChatHandler],
 ])
 
 const contentTypes = {

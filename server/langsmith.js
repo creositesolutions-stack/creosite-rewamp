@@ -123,13 +123,13 @@ function safeOutputs(value, mode) {
   return sanitizeValue(value, { mode })
 }
 
-export async function startChatTurnTrace({ metadata, inputs, tags = [], mode = getTracingPrivacyMode() }) {
+export async function startChatTurnTrace({ metadata, inputs, name = 'Creo Chat Turn', tags = [], mode = getTracingPrivacyMode() }) {
   const runtime = getTracingRuntime(mode)
   if (!runtime.enabled) return { root: null, runtime }
 
   try {
     const root = new RunTree({
-      name: 'Creo Chat Turn',
+      name,
       run_type: 'chain',
       client: runtime.client,
       project_name: runtime.project,

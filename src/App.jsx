@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { GUARDRAIL_MESSAGES, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, validateChatText } from '../shared/guardrails.js'
@@ -6,6 +6,7 @@ import highroadCover from '../drinkhighroad.png'
 import dreamsCover from '../dreamsglobalholidays.png'
 import aktpaCover from '../aktpa.png'
 import AiWebsiteSection from './AiWebsiteSection.jsx'
+import { buildIdeaDiscussionPrompt } from './ai-website-ideas.js'
 import visionReceipt from '../bill_image.png'
 
 const contact = {
@@ -30,23 +31,6 @@ function getSessionId() {
   } catch {
     return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`
   }
-}
-
-const CONVERSATION_STORAGE_KEY = 'creo-chat-conversation'
-
-function getStoredConversationId() {
-  try {
-    return window.sessionStorage.getItem(CONVERSATION_STORAGE_KEY) || ''
-  } catch {
-    return ''
-  }
-}
-
-function storeConversationId(id) {
-  try {
-    if (id) window.sessionStorage.setItem(CONVERSATION_STORAGE_KEY, id)
-    else window.sessionStorage.removeItem(CONVERSATION_STORAGE_KEY)
-  } catch {}
 }
 
 const services = [
@@ -158,107 +142,14 @@ function CreoChat({ intent }) {
   const [input, setInput] = useState('')
   const [inputError, setInputError] = useState('')
   const requestTimes = useRef([])
-  const [conversationId, setConversationIdState] = useState(() => getStoredConversationId())
-  const conversationIdRef = useRef(conversationId)
-  const [persistenceEnabled, setPersistenceEnabled] = useState(null)
-  const [historyError, setHistoryError] = useState('')
-  const conversationCreationRef = useRef(null)
-
-  const setConversationId = (id) => {
-    const nextId = id || ''
-    conversationIdRef.current = nextId
-    setConversationIdState(nextId)
-    storeConversationId(nextId)
-  }
 
   const transport = useMemo(() => new DefaultChatTransport({
-    api: '/api/chat',
+    api: '/api/ephemeral-chat',
     headers: () => ({ 'x-session-id': getSessionId() }),
-    prepareSendMessagesRequest: ({ id, messages, trigger, messageId }) => ({
-      body: {
-        id,
-        messages,
-        trigger,
-        messageId,
-        ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
-      },
-    }),
+    prepareSendMessagesRequest: ({ messages }) => ({ body: { messages } }),
   }), [])
   const { messages: aiMessages, setMessages, sendMessage, status, error: aiError, clearError, regenerate, stop } = useChat({ transport })
   const aiBusy = status === 'submitted' || status === 'streaming'
-
-  const ensureConversation = useCallback(async () => {
-    if (conversationIdRef.current) return conversationIdRef.current
-    if (persistenceEnabled === false) return null
-    if (conversationCreationRef.current) return conversationCreationRef.current
-
-    const creation = (async () => {
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        if (response.status === 503 && payload?.error === 'storage_not_configured') {
-          setPersistenceEnabled(false)
-          return null
-        }
-        throw new Error('Could not start a conversation.')
-      }
-
-      const data = await response.json()
-      const id = data?.conversation?.id
-      if (!id) throw new Error('Could not start a conversation.')
-
-      setConversationId(id)
-      setPersistenceEnabled(true)
-      return id
-    })()
-
-    conversationCreationRef.current = creation
-    try {
-      return await creation
-    } finally {
-      if (conversationCreationRef.current === creation) conversationCreationRef.current = null
-    }
-  }, [persistenceEnabled])
-
-  useEffect(() => {
-    let cancelled = false
-    const storedId = conversationIdRef.current
-
-    const boot = async () => {
-      if (!storedId) return
-      try {
-        const detail = await fetch(`/api/conversation?id=${encodeURIComponent(storedId)}`)
-        if (cancelled) return
-
-        if (detail.ok) {
-          const payload = await detail.json()
-          setPersistenceEnabled(true)
-          setMessages(Array.isArray(payload.messages) ? payload.messages : [])
-          return
-        }
-
-        if (detail.status === 404) {
-          setConversationId('')
-          setMessages([])
-        } else if (detail.status === 503) {
-          setPersistenceEnabled(false)
-          setConversationId('')
-        } else {
-          setHistoryError('Could not load the current chat.')
-        }
-      } catch {
-        if (!cancelled) setHistoryError('Could not load the current chat.')
-      }
-    }
-
-    boot()
-    return () => { cancelled = true }
-  }, [setMessages])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowGreeting(false), 9000)
@@ -288,17 +179,7 @@ function CreoChat({ intent }) {
       return
     }
 
-    let cancelled = false
-    ;(async () => {
-      try {
-        await ensureConversation()
-        if (!cancelled) sendMessage({ text: intent.prompt })
-      } catch {
-        if (!cancelled) setInputError('Chat is temporarily unavailable. Please try again in a moment.')
-      }
-    })()
-
-    return () => { cancelled = true }
+    sendMessage({ text: intent.prompt })
   }, [intent])
 
   const openChat = () => { setIsOpen(true); setShowGreeting(false) }
@@ -306,12 +187,10 @@ function CreoChat({ intent }) {
   const startNewConversation = () => {
     stop()
     try { window.sessionStorage.removeItem(SESSION_STORAGE_KEY) } catch {}
-    setConversationId('')
     setMessages([])
     clearError()
     setInput('')
     setInputError('')
-    setHistoryError('')
     requestTimes.current = []
     setError('')
     if (!aiEnabled) {
@@ -357,7 +236,6 @@ function CreoChat({ intent }) {
     if (aiError) clearError()
 
     try {
-      await ensureConversation()
       sendMessage({ text })
     } catch {
       setInput(text)
@@ -370,7 +248,6 @@ function CreoChat({ intent }) {
     clearError()
 
     try {
-      await ensureConversation()
       regenerate()
     } catch {
       setInputError('Chat is temporarily unavailable. Please try again in a moment.')
@@ -379,7 +256,7 @@ function CreoChat({ intent }) {
 
   return <aside className={`creo-chat ${isOpen ? 'is-open' : ''}`} aria-label="Chat with Creo">
     {showGreeting && !isOpen && <button className="chat-greeting" type="button" onClick={openChat}>Hello, I’m <b>Creo</b>.<br />Do you have a query?<span>Tap to chat</span></button>}
-    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><div className="chat-actions"><button type="button" className="chat-clear" onClick={clearChat}>Clear</button><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div></div>{historyError && <p className="chat-history-error" role="alert">{historyError}</p>}<div className="chat-content">
+    {isOpen && <div className="chat-window" role="dialog" aria-label="Chat with Creo"><div className="chat-header"><div className="chat-title"><span className="chat-avatar">C</span><div><b>Creo</b><small><i className="online-dot" />Online</small></div><label className="chat-ai-toggle"><span>AI</span><button type="button" role="switch" aria-checked={aiEnabled} className={`toggle ${aiEnabled ? 'on' : ''}`} onClick={() => setAiEnabled((v) => !v)}><span className="toggle-knob" /></button></label></div><div className="chat-actions"><button type="button" className="chat-clear" onClick={clearChat}>Clear</button><button type="button" className="chat-close" aria-label="Close chat" onClick={() => setIsOpen(false)}>×</button></div></div><div className="chat-content">
       {aiEnabled ? <>
         <div className="chat-bubble bot">Hello! I’m Creo, the Creosite assistant. How can we help?</div>
         {aiMessages.map((m) => (
@@ -418,6 +295,10 @@ export default function App() {
     id: Date.now(),
     prompt: `Tell me more about the ${project.name} project Creosite built.`,
   })
+  const discussIdeaWithCreo = (idea, businessType) => setChatIntent({
+    id: Date.now(),
+    prompt: buildIdeaDiscussionPrompt(idea, businessType),
+  })
 
   useEffect(() => {
     const grid = workGridRef.current
@@ -452,9 +333,9 @@ export default function App() {
 
   const service = services[activeService]
   return <><Header /><main id="top">
-    <section className="hero"><svg className="waves" viewBox="0 0 1440 500" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="wave-1" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#3a5774" stopOpacity=".82" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient><linearGradient id="wave-2" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#1d2938" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient></defs><path className="a" d="M0 260C220 180 420 200 560 300S900 480 1100 330 1340 160 1440 190V500H0Z" fill="url(#wave-1)" stroke="#b5c0ce" strokeOpacity=".38" strokeWidth="2" /><path className="b" d="M0 330C200 280 380 330 520 400S860 500 1040 400 1320 250 1440 270V500H0Z" fill="url(#wave-2)" opacity=".8" /></svg><div className="wrap hero-content"><div className="chip"><span className="dot" />Creosite Solutions — Websites for what’s next</div><h1><span className="w">Let’s Build</span><span className="w">Something</span><span className="o">Unforgettable.</span></h1><p className="sub">AI-powered web development for modern businesses. Beautiful websites, built in days — not months.</p><div className="built"><i>built by</i><b>humans</b><span>+</span><b className="ai-star">✦ AI</b></div><div className="ctas"><a className="pill solid" href="#work">See our work ↓</a><a className="pill dark" href="#contact">Get started →</a></div></div><span className="mono hero-note">EST. 2024 / INDIA · REMOTE · GLOBAL</span><span className="mono hero-scroll">SCROLL ↓</span></section>
+    <section className="hero"><svg className="waves" viewBox="0 0 1440 500" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="wave-1" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#3a5774" stopOpacity=".82" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient><linearGradient id="wave-2" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#1d2938" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient></defs><path className="a" d="M0 260C220 180 420 200 560 300S900 480 1100 330 1340 160 1440 190V500H0Z" fill="url(#wave-1)" stroke="#b5c0ce" strokeOpacity=".38" strokeWidth="2" /><path className="b" d="M0 330C200 280 380 330 520 400S860 500 1040 400 1320 250 1440 270V500H0Z" fill="url(#wave-2)" opacity=".8" /></svg><div className="wrap hero-content"><div className="chip"><span className="dot" />Creosite Solutions — Websites for what’s next</div><h1><span className="w">Let’s Build</span><span className="w">Something</span><span className="o">Unforgettable.</span></h1><p className="sub">AI-powered web development for modern businesses. Beautiful websites, built in days — not months.</p><div className="built"><i>built by</i><b>humans</b><span>+</span><b className="ai-star">✦ AI</b></div><div className="ctas"><a className="pill solid" href="#ai-ideas">Find AI ideas for your business ↓</a><a className="pill dark" href="#contact">Get started →</a></div></div><span className="mono hero-note">EST. 2024 / INDIA · REMOTE · GLOBAL</span><span className="mono hero-scroll">SCROLL ↓</span></section>
     <section id="work" className="selected-work"><div className="wrap"><h2>Selected <span className="outline">work</span></h2><p className="lead">A few of the digital experiences we&apos;ve built for ambitious brands and communities.</p></div><div className="wrap wide"><div className="work-grid has-active-project" ref={workGridRef}>{projects.map((project, index) => { const isActive = activeProject === index; return <article className={`card project-card ${index !== 1 ? 'side-card' : ''} ${isActive ? 'is-active' : ''}`} key={project.name} style={{ '--brand': project.brand, '--brand-tone': project.tone }} onMouseEnter={() => setActiveProject(index)} onMouseLeave={() => setActiveProject(1)}><BrowserMock image={project.cover} name={project.name} /><div className="meta"><div><h3>{project.name}</h3><p>{project.description}</p></div><div className="project-meta"><button className="ask-creo" type="button" onClick={() => askCreo(project)} aria-label={`Ask Creo about the ${project.name} project`}><span className="ask-creo-icon" aria-hidden="true">✦</span><span className="ask-creo-label">Ask Creo</span></button><a className="detail-button" href={project.url} target="_blank" rel="noreferrer" onFocus={() => setActiveProject(index)} onBlur={() => setActiveProject(1)}>Details <span>→</span></a></div></div></article>})}</div></div></section>
-    <AiWebsiteSection />
+    <AiWebsiteSection onDiscussIdea={discussIdeaWithCreo} />
     <section id="solutions" className="dark-section"><div className="wrap"><h2>What we <span className="outline">build</span></h2><p className="lead">Pick a service to see what’s included.</p><div className="svc"><div className="tabs" role="tablist" aria-label="Services">{services.map((item, index) => <button className="tab" key={item.name} type="button" role="tab" aria-selected={index === activeService} onClick={() => setActiveService(index)}>{item.name}<span>{index + 1}/{services.length}</span></button>)}</div><div className="panel" role="tabpanel"><div className="fade"><h3>{service.name}</h3><p>{service.description}</p></div><ul className="fade">{service.items.map((item) => <li key={item}>{item}</li>)}</ul></div></div></div></section>
     <section id="about" className="about dark-section"><div className="wrap"><div className="vision-layout"><div className="vision-copy"><span className="eyebrow">OUR PURPOSE</span><h2>Our <span className="outline">vision</span></h2><p>We want to make useful technology part of everyday business, not something that only large companies can afford or understand.</p><p>Our aim is to use AI and digital tools in practical ways that make work faster, more efficient and more affordable for small businesses. Technology only matters when it genuinely helps ordinary people solve real problems, save time and grow with confidence.</p></div><figure className="vision-art"><img src={visionReceipt} alt="A receipt-style illustration of Creo’s vision: useful, accessible technology that supports people." loading="lazy" /></figure></div></div></section>
     <section id="contact"><div className="wrap"><h2>Let’s start a <span className="outline">conversation</span></h2><p className="lead">Have a project, question or idea? Send us a note and we’ll be in touch shortly.</p><div className="contact"><div className="info"><p className="contact-kicker">GET IN TOUCH</p><a href={`mailto:${contact.email}`}>{contact.email}</a><p>For projects, questions and partnerships</p><a href={phoneHref}>{contact.phone}</a><p>{contact.hours}</p><a className="whatsapp-option" href={whatsappHref} target="_blank" rel="noreferrer"><span className="whatsapp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.48 1.33 4.99L2 22l5.14-1.31A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm5.81 14.24c-.24.68-1.41 1.31-1.96 1.39-.5.07-1.13.1-1.83-.12-.42-.14-.97-.32-1.67-.62-2.93-1.27-4.83-4.22-4.98-4.43-.15-.2-1.19-1.59-1.19-3.03 0-1.44.76-2.15 1.02-2.44.27-.29.58-.37.78-.37h.57c.18 0 .42-.07.66.51.24.58.83 2 .9 2.14.07.14.12.32.03.51-.1.19-.14.31-.28.49-.15.17-.31.39-.44.53-.15.15-.31.31-.13.54.14.22.64 1.05 1.38 1.7.95.84 1.74 1.1 1.99 1.23.24.13.39.11.54-.07.15-.18.63-.73.8-.98.17-.25.33-.21.57-.12.24.1 1.52.72 1.78.85.26.13.43.2.49.31.06.12.06.69-.18 1.36z"/></svg></span><span><b>WhatsApp us now</b><small>Start a quick conversation</small></span><strong>→</strong></a></div><ContactForm /></div></div></section>

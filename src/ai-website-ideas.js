@@ -15,6 +15,36 @@ export const DEMO_EXAMPLES = [
     ],
   },
   {
+    title: 'Explain your offering',
+    freesUp: 'helping customers understand packages and products.',
+    steps: [
+      { type: 'assistant', text: 'Choose an offering and ask Creo AI for a quick explanation:' },
+      {
+        type: 'offerings',
+        items: [
+          {
+            category: 'TOUR PACKAGE',
+            title: 'Kerala Backwater Escape',
+            theme: 'travel',
+            description: 'A four-day Kerala getaway bundles stays, transfers, and guided backwater experiences into one easy-to-plan trip.',
+          },
+          {
+            category: 'DENTAL TREATMENT',
+            title: 'Root Canal Treatment',
+            theme: 'dental',
+            description: 'Root canal treatment removes infected tissue from inside a tooth and seals it to help preserve the natural tooth.',
+          },
+          {
+            category: 'TECH PRODUCT',
+            title: 'Everyday Laptop Bundle',
+            theme: 'tech',
+            description: 'This everyday laptop package pairs a lightweight computer with useful accessories for study and work.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     title: 'Books appointments',
     freesUp: 'phone tag and back-and-forth emails.',
     steps: [
@@ -92,25 +122,60 @@ export const DEMO_EXAMPLES = [
   },
 ]
 
-export const BUSINESS_IDEAS = [
-  { keywords: ['cafe', 'coffee', 'restaurant', 'bakery', 'food', 'kitchen'], ideas: ['Answer menu, allergy and opening-hour questions at any hour', 'Take table bookings and send reminders', 'Draft replies to reviews and catering enquiries'] },
-  { keywords: ['salon', 'barber', 'spa', 'beauty', 'nail'], ideas: ['Book and reschedule appointments without phone calls', 'Send gentle reminders to reduce no-shows', 'Suggest services based on what the client asks for'] },
-  { keywords: ['plumb', 'electric', 'build', 'trade', 'repair', 'contract', 'paint', 'carpent'], ideas: ['Ask the right questions and collect job details for quotes', 'Book call-outs into free slots', 'Draft follow-up emails after sending a quote'] },
-  { keywords: ['shop', 'store', 'retail', 'boutique', 'ecommerce', 'fashion'], ideas: ['Answer stock, delivery and returns questions', 'Suggest products from what a visitor describes', 'Write product descriptions in your own style'] },
-  { keywords: ['clinic', 'dent', 'doctor', 'physio', 'health', 'therap'], ideas: ['Handle appointment requests and reminders', 'Answer common questions about services and preparation', 'Sort enquiries so urgent ones reach you first'] },
-  { keywords: ['gym', 'yoga', 'fitness', 'studio', 'coach', 'dance'], ideas: ['Answer class time and membership questions', 'Book trial sessions automatically', 'Draft your weekly class newsletter'] },
-  { keywords: ['tutor', 'school', 'teach', 'class', 'academy', 'tuition'], ideas: ['Answer fee, timing and syllabus questions', 'Book demo classes', 'Draft progress updates for parents'] },
-]
+function getSessionId() {
+  const key = 'creo-ideas-session'
+  try {
+    let id = window.sessionStorage.getItem(key)
+    if (!id) {
+      id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      window.sessionStorage.setItem(key, id)
+    }
+    return id
+  } catch {
+    return 'temporary-session'
+  }
+}
 
-export const DEFAULT_IDEAS = [
-  'Answer your most common customer questions at any hour',
-  'Collect enquiry details and send them to your inbox',
-  'Draft routine replies for you to review',
-]
+function toChatSafeText(value) {
+  return String(value || '')
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-// Keep this async seam: it can later POST { businessType } to /api/ideas and consume { ideas }.
+export function buildIdeaDiscussionPrompt(idea, businessType) {
+  const titleWords = (toChatSafeText(idea?.title) || 'AI idea').split(/\s+/).filter(Boolean).slice(0, 5)
+  const businessWords = (toChatSafeText(businessType) || 'my business').split(/\s+/).filter(Boolean).slice(0, Math.max(1, 10 - titleWords.length))
+  const title = titleWords.join(' ')
+  const business = businessWords.join(' ')
+  const purpose = toChatSafeText(idea?.description) || 'support my business'
+  return `I need the idea "${title}" for ${business} to ${purpose}. Can you help?`
+}
+
 export async function getIdeas(businessType) {
-  const normalized = String(businessType || '').trim().toLowerCase()
-  const category = BUSINESS_IDEAS.find(({ keywords }) => keywords.some((keyword) => normalized.includes(keyword)))
-  return category ? [...category.ideas] : [...DEFAULT_IDEAS]
+  const response = await fetch('/api/ideas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ businessType, sessionId: getSessionId() }),
+  })
+  const responseText = await response.text()
+  let result
+  try {
+    result = responseText ? JSON.parse(responseText) : null
+  } catch {
+    result = null
+  }
+
+  if (!response.ok) {
+    const error = new Error(result?.message || `The ideas service returned an error (${response.status}). Please try again.`)
+    error.status = response.status
+    throw error
+  }
+  if (!result || !Array.isArray(result.ideas)) {
+    throw new Error('The AI ideas service returned an empty or invalid response. Please try again, and check that the server is running with its AI API key configured.')
+  }
+  return result
 }
