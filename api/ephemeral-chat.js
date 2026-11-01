@@ -1,18 +1,18 @@
 import { openai } from '@ai-sdk/openai'
 import { streamText } from 'ai'
-import { createRateLimiter, GUARDRAIL_MESSAGES, hasUnsupportedParts, validateChatText } from '../shared/guardrails.js'
+import { createRateLimiter, GUARDRAIL_MESSAGES, hasUnsupportedParts, validateChatHistory, validateChatText } from '../shared/guardrails.js'
 import { createApiHandler, errorResponse, readJsonBody, textResponse } from '../server/http.js'
+import { getClientIp } from '../server/request.js'
 import { getSystemPrompt } from './prompt.js'
 import { getLastUserMessage, getMessageText, toModelMessages, validateUiMessages } from '../server/messages.js'
 
 export const config = { runtime: 'nodejs', maxDuration: 60 }
 
 const rateLimiter = createRateLimiter({ max: 10, windowMs: 60_000 })
+const ipRateLimiter = createRateLimiter({ max: 30, windowMs: 60_000 })
 
-function getRateLimitKey(request) {
+function getRateLimitKey(request, ip) {
   const sessionId = (request.headers.get('x-session-id') || 'anonymous').slice(0, 100)
-  const forwarded = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || ''
-  const ip = (forwarded.split(',')[0].trim() || 'unknown').slice(0, 64)
   return `${ip}|${sessionId}`
 }
 
@@ -25,6 +25,12 @@ export const ephemeralChatHandler = createApiHandler(async (request) => {
   if (!Array.isArray(messages) || messages.length === 0) return errorResponse('invalid_request', 'Invalid chat request.', 400)
   if (hasUnsupportedParts(messages)) return textResponse(GUARDRAIL_MESSAGES.notPlain, { status: 415 })
 
+  const historyProblem = validateChatHistory(messages)
+  if (historyProblem) {
+    const status = historyProblem.startsWith('This conversation') || historyProblem === 'Invalid chat request.' || historyProblem === GUARDRAIL_MESSAGES.tooLong || historyProblem === GUARDRAIL_MESSAGES.empty ? 400 : 415
+    return textResponse(historyProblem, { status })
+  }
+
   let validatedMessages
   try {
     validatedMessages = await validateUiMessages(messages)
@@ -36,7 +42,14 @@ export const ephemeralChatHandler = createApiHandler(async (request) => {
   const text = getMessageText(latestUserMessage)
   const textProblem = validateChatText(text)
   if (textProblem) return textResponse(textProblem, { status: textProblem === GUARDRAIL_MESSAGES.tooLong ? 400 : 415 })
-  const rate = rateLimiter.check(getRateLimitKey(request))
+
+  const ip = getClientIp(request)
+  const ipRate = ipRateLimiter.check(ip)
+  if (ipRate.limited) {
+    return errorResponse('rate_limited', `${GUARDRAIL_MESSAGES.tooMany} Try again in ${ipRate.retryAfter} seconds.`, 429, { 'Retry-After': String(ipRate.retryAfter) })
+  }
+
+  const rate = rateLimiter.check(getRateLimitKey(request, ip))
   if (rate.limited) {
     return errorResponse('rate_limited', `${GUARDRAIL_MESSAGES.tooMany} Try again in ${rate.retryAfter} seconds.`, 429, { 'Retry-After': String(rate.retryAfter) })
   }
@@ -46,6 +59,7 @@ export const ephemeralChatHandler = createApiHandler(async (request) => {
       model: openai(process.env.OPENAI_MODEL || 'gpt-4o-mini'),
       system: getSystemPrompt(),
       messages: await toModelMessages(validatedMessages),
+      maxOutputTokens: 500,
       abortSignal: request.signal,
     })
     return result.toUIMessageStreamResponse({ headers: { 'Cache-Control': 'no-store' } })

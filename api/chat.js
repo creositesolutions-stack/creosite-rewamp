@@ -14,6 +14,7 @@ import {
   textResponse,
   withVisitorCookie,
 } from '../server/http.js'
+import { getClientIp } from '../server/request.js'
 import { getVisitorIdentity, hasVisitorCookieSecret, isUuid } from '../server/visitor.js'
 import { isStorageConfigured } from '../server/supabase.js'
 import {
@@ -49,15 +50,14 @@ import { getTracingPrivacyMode, hashIdentifier, redactText } from '../server/pri
 export const config = { runtime: 'nodejs', maxDuration: 60 }
 
 const rateLimiter = createRateLimiter()
+const ipRateLimiter = createRateLimiter({ max: 30, windowMs: 60_000 })
 
 function getSessionId(req) {
   return (req.headers.get('x-session-id') || 'anonymous').slice(0, 100)
 }
 
-function getSessionKey(req, visitorId) {
+function getSessionKey(req, visitorId, ip) {
   const sessionId = getSessionId(req)
-  const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || ''
-  const ip = (forwarded.split(',')[0].trim() || 'unknown').slice(0, 64)
   return `${visitorId || 'anonymous'}|${sessionId}|${ip}`
 }
 
@@ -133,6 +133,7 @@ async function createAssistantResponse({
       model: openai(modelId),
       system: systemPrompt,
       messages: modelMessages,
+      maxOutputTokens: 500,
       abortSignal: request.signal,
       providerOptions: createRunProviderOptions(runtime, {
         parentRun: root,
@@ -251,7 +252,15 @@ async function handlePersistentChat({ request, body, visitor, latestUserMessage,
       return textResponse(guardrail.problem, { status: guardrail.status })
     }
 
-    const rate = rateLimiter.check(getSessionKey(request, visitor.visitorId))
+    const ip = getClientIp(request)
+    const ipRate = ipRateLimiter.check(ip)
+    if (ipRate.limited) {
+      await finishChatTurn(root, { outputs: { status: 'rate_limited' }, mode })
+      scheduleLangSmithFlush(mode)
+      return rateLimitResponse(ipRate)
+    }
+
+    const rate = rateLimiter.check(getSessionKey(request, visitor.visitorId, ip))
     if (rate.limited) {
       await finishChatTurn(root, { outputs: { status: 'rate_limited' }, mode })
       scheduleLangSmithFlush(mode)

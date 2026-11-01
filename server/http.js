@@ -36,10 +36,28 @@ export async function readJsonBody(request) {
     return { error: errorResponse('payload_too_large', 'Request body is too large.', 413) }
   }
 
+  let text = ''
   try {
-    const text = await request.text()
-    if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) {
-      return { error: errorResponse('payload_too_large', 'Request body is too large.', 413) }
+    if (request.body && typeof request.body.getReader === 'function') {
+      const reader = request.body.getReader()
+      const chunks = []
+      let total = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        total += value.byteLength
+        if (total > MAX_BODY_BYTES) {
+          await reader.cancel().catch(() => {})
+          return { error: errorResponse('payload_too_large', 'Request body is too large.', 413) }
+        }
+        chunks.push(value)
+      }
+      text = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString('utf8')
+    } else {
+      text = await request.text()
+      if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) {
+        return { error: errorResponse('payload_too_large', 'Request body is too large.', 413) }
+      }
     }
     if (!text) return { value: {} }
     return { value: JSON.parse(text) }

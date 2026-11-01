@@ -22,6 +22,14 @@ const apiRoutes = new Map([
   ['/api/ephemeral-chat', ephemeralChatHandler],
 ])
 
+const securityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'",
+}
+
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -37,7 +45,14 @@ const contentTypes = {
 }
 
 async function serveStatic(req, res) {
-  const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)
+  let pathname
+  try {
+    pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)
+  } catch {
+    res.writeHead(400)
+    res.end('Bad Request')
+    return
+  }
   const file = normalize(resolve(distDir, `.${pathname}`))
   const distPrefix = distDir.endsWith(sep) ? distDir : `${distDir}${sep}`
   if (file !== distDir && !file.startsWith(distPrefix)) {
@@ -50,7 +65,15 @@ async function serveStatic(req, res) {
     const info = await stat(file)
     const target = info.isDirectory() ? join(file, 'index.html') : file
     const body = await readFile(target)
-    res.writeHead(200, { 'Content-Type': contentTypes[extname(target)] || 'application/octet-stream' })
+    const cacheControl = pathname.startsWith('/assets/')
+      ? 'public, max-age=31536000, immutable'
+      : /\.(png|jpe?g|webp|svg|ico|woff2)$/i.test(target)
+        ? 'public, max-age=604800'
+        : 'no-cache'
+    res.writeHead(200, {
+      'Content-Type': contentTypes[extname(target)] || 'application/octet-stream',
+      'Cache-Control': cacheControl,
+    })
     res.end(body)
     return
   } catch {}
@@ -63,7 +86,7 @@ async function serveStatic(req, res) {
 
   try {
     const body = await readFile(join(distDir, 'index.html'))
-    res.writeHead(200, { 'Content-Type': contentTypes['.html'] })
+    res.writeHead(200, { 'Content-Type': contentTypes['.html'], 'Cache-Control': 'no-cache' })
     res.end(body)
   } catch {
     res.writeHead(404)
@@ -72,6 +95,7 @@ async function serveStatic(req, res) {
 }
 
 const server = createServer(async (req, res) => {
+  for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value)
   let pathname
   try {
     pathname = new URL(req.url, 'http://localhost').pathname

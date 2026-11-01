@@ -155,11 +155,12 @@ export function buildIdeaDiscussionPrompt(idea, businessType) {
   return `I need the idea "${title}" for ${business} to ${purpose}. Can you help?`
 }
 
-export async function getIdeas(businessType) {
+export async function getIdeas(businessType, { turnstileToken = '', signal } = {}) {
   const response = await fetch('/api/ideas', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ businessType, sessionId: getSessionId() }),
+    body: JSON.stringify({ businessType, sessionId: getSessionId(), turnstileToken }),
+    signal,
   })
   const responseText = await response.text()
   let result

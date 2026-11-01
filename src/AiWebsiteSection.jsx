@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEMO_EXAMPLES, getIdeas } from './ai-website-ideas.js'
+import Turnstile, { TURNSTILE_SITE_KEY } from './Turnstile.jsx'
 import './ai-website-section.css'
 
 function interpolate(text, choices) {
@@ -54,12 +55,23 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
   const [ideasLoading, setIdeasLoading] = useState(false)
   const [ideasError, setIdeasError] = useState('')
   const [ideasRemaining, setIdeasRemaining] = useState(3)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileReset, setTurnstileReset] = useState(0)
   const runToken = useRef(0)
   const pendingWaits = useRef(new Set())
   const choiceResolver = useRef(null)
   const selectedValues = useRef([])
   const entryId = useRef(0)
   const ideasRequest = useRef(0)
+  const ideasAbort = useRef(null)
+  const handleTurnstile = useCallback((token) => setTurnstileToken(token), [])
+
+  const resetTurnstile = useCallback(() => {
+    setTurnstileToken('')
+    setTurnstileReset((value) => value + 1)
+  }, [])
+
+  useEffect(() => () => ideasAbort.current?.abort(), [])
 
   const wait = useCallback((milliseconds, token) => new Promise((resolve) => {
     if (runToken.current !== token) return resolve(false)
@@ -170,22 +182,33 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
       setIdeasError('Please use Creo for more chatting and enter only a short business type here (6 words maximum).')
       return
     }
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setIdeasError('Please complete the verification below and try again.')
+      return
+    }
     const request = ++ideasRequest.current
+    ideasAbort.current?.abort()
+    const controller = new AbortController()
+    ideasAbort.current = controller
     setIdeasError('')
     setIdeasLoading(true)
     try {
-      const result = await getIdeas(businessType)
+      const result = await getIdeas(businessType, { turnstileToken, signal: controller.signal })
       if (ideasRequest.current === request) {
         setIdeas(result.ideas)
         setIdeasRemaining(result.remaining)
       }
     } catch (error) {
+      if (error.name === 'AbortError') return
       if (ideasRequest.current === request) {
         if (error.status === 429) setIdeasRemaining(0)
         setIdeasError(error.message || 'AI ideas are unavailable right now.')
       }
     } finally {
-      if (ideasRequest.current === request) setIdeasLoading(false)
+      if (ideasRequest.current === request) {
+        setIdeasLoading(false)
+        resetTurnstile()
+      }
     }
   }
 
@@ -285,6 +308,7 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
               <span className="ask-creo-icon" aria-hidden="true">✦</span>
               <span>{ideasLoading ? 'Creo is thinking…' : 'Ask Creo for ideas'}</span>
             </button>
+            <Turnstile onToken={handleTurnstile} resetSignal={turnstileReset} action="ai_ideas" />
           </form>
           <div className="ai-ideas-status" aria-live="polite">
             <span id="ai-ideas-hint">Short business type only · {ideasRemaining} AI {ideasRemaining === 1 ? 'request' : 'requests'} remaining this session</span>
