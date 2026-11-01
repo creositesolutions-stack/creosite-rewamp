@@ -8,6 +8,7 @@ import conversationsHandler from './api/conversations.js'
 import conversationHandler from './api/conversation.js'
 import ideasHandler from './api/ideas.js'
 import ephemeralChatHandler from './api/ephemeral-chat.js'
+import worksHandler from './api/works.js'
 import { serveNodeRequest } from './server/http.js'
 
 const distDir = fileURLToPath(new URL('./dist', import.meta.url))
@@ -20,6 +21,7 @@ const apiRoutes = new Map([
   ['/api/conversation', conversationHandler],
   ['/api/ideas', ideasHandler],
   ['/api/ephemeral-chat', ephemeralChatHandler],
+  ['/api/works', worksHandler],
 ])
 
 const securityHeaders = {
@@ -27,7 +29,7 @@ const securityHeaders = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'",
 }
 
 const contentTypes = {

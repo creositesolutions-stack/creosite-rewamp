@@ -291,6 +291,7 @@
     mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 32px),transparent 100%);
   }
   .ai-example-list::-webkit-scrollbar { display:none; }
+  .ai-example-button:nth-child(2) { display:none; }
   .ai-example-button {
     width:auto;
     flex:0 0 auto;

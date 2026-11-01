@@ -6,6 +6,7 @@ import conversationsHandler from './api/conversations.js'
 import conversationHandler from './api/conversation.js'
 import ideasHandler from './api/ideas.js'
 import ephemeralChatHandler from './api/ephemeral-chat.js'
+import worksHandler from './api/works.js'
 import { serveNodeRequest } from './server/http.js'
 
 const apiRoutes = new Map([
@@ -15,6 +16,7 @@ const apiRoutes = new Map([
   ['/api/conversation', conversationHandler],
   ['/api/ideas', ideasHandler],
   ['/api/ephemeral-chat', ephemeralChatHandler],
+  ['/api/works', worksHandler],
 ])
 
 function creoApiPlugin() {
