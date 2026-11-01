@@ -62,6 +62,13 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
   const choiceResolver = useRef(null)
   const selectedValues = useRef([])
   const entryId = useRef(0)
+  const sectionRef = useRef(null)
+  const tabRefs = useRef([])
+  const activeExampleRef = useRef(0)
+  const autoAdvanceStopped = useRef(false)
+  const autoStarted = useRef(false)
+  const autoTimer = useRef(null)
+  const scheduleAutoAdvance = useRef(null)
   const ideasRequest = useRef(0)
   const ideasAbort = useRef(null)
   const handleTurnstile = useCallback((token) => setTurnstileToken(token), [])
@@ -141,6 +148,7 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
     cancelPlayback()
     const token = runToken.current
     selectedValues.current = []
+    activeExampleRef.current = index
     setActiveExample(index)
     setEntries([])
     setChoices([])
@@ -167,9 +175,55 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
   }, [])
 
   useEffect(() => {
-    startDemo(0)
-    return cancelPlayback
+    const section = sectionRef.current
+    if (!section) return undefined
+
+    const beginAutoPlay = () => {
+      if (autoStarted.current) return
+      autoStarted.current = true
+      if (autoAdvanceStopped.current) return
+      startDemo(activeExampleRef.current)
+      if (prefersReducedMotion()) return
+
+      const advance = () => {
+        autoTimer.current = window.setTimeout(() => {
+          if (autoAdvanceStopped.current) return
+          startDemo((activeExampleRef.current + 1) % DEMO_EXAMPLES.length)
+          advance()
+        }, 7000)
+      }
+      scheduleAutoAdvance.current = advance
+      advance()
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      beginAutoPlay()
+    } else {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) beginAutoPlay()
+      }, { threshold: 0.2 })
+      observer.observe(section)
+      return () => {
+        observer.disconnect()
+        window.clearTimeout(autoTimer.current)
+        scheduleAutoAdvance.current = null
+        cancelPlayback()
+      }
+    }
+
+    return () => {
+      window.clearTimeout(autoTimer.current)
+      scheduleAutoAdvance.current = null
+      cancelPlayback()
+    }
   }, [cancelPlayback, startDemo])
+
+  useEffect(() => {
+    const tab = tabRefs.current[activeExample]
+    if (tab && window.matchMedia('(max-width: 768px)').matches) {
+      tab.scrollIntoView({ inline: 'center', block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+    }
+  }, [activeExample])
 
   const showIdeas = async (event) => {
     event.preventDefault()
@@ -213,7 +267,7 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
   }
 
   return (
-    <section className="ai-website-section" aria-labelledby="ai-website-heading">
+    <section ref={sectionRef} className="ai-website-section" aria-labelledby="ai-website-heading">
       <div className="ai-website-container">
         <div className="ai-website-intro">
           <h2 id="ai-website-heading">What AI can do on your <span className="outline">website</span></h2>
@@ -221,29 +275,44 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
         </div>
 
         <div className="ai-demo-layout">
-          <div className="ai-example-list" aria-label="AI examples">
+          <div className="ai-example-list" role="tablist" aria-label="AI examples">
             {DEMO_EXAMPLES.map((example, index) => {
               const selected = activeExample === index
               return (
                 <button
+                  ref={(node) => { tabRefs.current[index] = node }}
                   className={`ai-example-button${selected ? ' is-current' : ''}`}
                   type="button"
+                  role="tab"
                   key={example.title}
-                  aria-current={selected ? 'true' : undefined}
-                  aria-expanded={selected}
-                  onClick={() => startDemo(index)}
+                  aria-selected={selected}
+                  aria-controls="ai-demo-panel"
+                  onClick={() => {
+                    autoAdvanceStopped.current = true
+                    window.clearTimeout(autoTimer.current)
+                    startDemo(index)
+                  }}
                 >
-                  <span className="ai-example-title">{example.title}</span>
+                  <span className="ai-example-title ai-example-title-desktop">{example.title}</span>
+                  <span className="ai-example-title ai-example-title-mobile">{example.mobileTitle}</span>
                   <span className="ai-example-detail"><span>Frees up:</span> {example.freesUp}</span>
                 </button>
               )
             })}
           </div>
+          <p className="ai-mobile-active-detail"><span>Frees up:</span> {DEMO_EXAMPLES[activeExample].freesUp}</p>
 
-          <div className="ai-chat-card">
+          <div id="ai-demo-panel" className="ai-chat-card" role="tabpanel" aria-live="polite" aria-label={`${DEMO_EXAMPLES[activeExample].title} chat demonstration`}>
             <div className="ai-chat-header">
-              <span>YOUR WEBSITE · ASSISTANT</span>
-              <button type="button" onClick={() => startDemo(activeExample)} aria-label="Replay this example">↻ REPLAY</button>
+              <span className="ai-chat-label-desktop">YOUR WEBSITE · ASSISTANT</span>
+              <span className="ai-chat-label-mobile">YOUR WEBSITE ASSISTANT</span>
+              <button type="button" onClick={() => {
+                window.clearTimeout(autoTimer.current)
+                startDemo(activeExample)
+                if (autoStarted.current && !autoAdvanceStopped.current && !prefersReducedMotion()) {
+                  scheduleAutoAdvance.current?.()
+                }
+              }} aria-label="Replay this example">↻ REPLAY</button>
             </div>
             <div className="ai-chat-messages" aria-live="polite" aria-relevant="additions text">
               {entries.map((entry) => entry.type === 'card' ? (
