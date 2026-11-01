@@ -1,6 +1,10 @@
-export const MAX_WORDS = 20
+export const MAX_WORDS = 120
+export const MAX_CHARS = 4_000
 export const RATE_LIMIT_MAX = 10
 export const RATE_LIMIT_WINDOW_MS = 60_000
+export const MAX_HISTORY_MESSAGES = 40
+export const MAX_HISTORY_CHARS = 24_000
+export const MAX_MESSAGE_CHARS = 4_000
 
 export const GUARDRAIL_MESSAGES = {
   empty: 'Please type a message first.',
@@ -40,15 +44,49 @@ export function isPlainEnglish(text) {
 
 export function validateChatText(text) {
   if (!text || !text.trim()) return GUARDRAIL_MESSAGES.empty
+  if (text.length > MAX_CHARS) return GUARDRAIL_MESSAGES.tooLong
   if (countWords(text) > MAX_WORDS) return GUARDRAIL_MESSAGES.tooLong
   if (!isPlainEnglish(text)) return GUARDRAIL_MESSAGES.notPlain
   return ''
 }
 
+function messageText(message) {
+  if (Array.isArray(message?.parts)) {
+    return message.parts
+      .filter((part) => part?.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join(' ')
+  }
+  return typeof message?.content === 'string' ? message.content : ''
+}
+
+export function validateChatHistory(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return 'Invalid chat request.'
+  if (messages[messages.length - 1]?.role !== 'user') return 'Invalid chat request.'
+  if (messages.length > MAX_HISTORY_MESSAGES) return 'This conversation is too long. Please start a new chat.'
+
+  let total = 0
+  for (const message of messages) {
+    if (message?.role !== 'user' && message?.role !== 'assistant') return 'Invalid chat request.'
+    const text = messageText(message)
+    if (text.length > MAX_MESSAGE_CHARS) {
+      return message.role === 'user' ? GUARDRAIL_MESSAGES.tooLong : 'This conversation is too long. Please start a new chat.'
+    }
+    total += text.length
+    if (total > MAX_HISTORY_CHARS) return 'This conversation is too long. Please start a new chat.'
+    if (message.role === 'user') {
+      const problem = validateChatText(text)
+      if (problem) return problem
+    }
+  }
+
+  return ''
+}
+
 export function hasUnsupportedParts(messages) {
   return messages.some((message) => {
-    if (Array.isArray(message.experimental_attachments) && message.experimental_attachments.length > 0) return true
-    if (!Array.isArray(message.parts)) return false
+    if (Array.isArray(message?.experimental_attachments) && message.experimental_attachments.length > 0) return true
+    if (!Array.isArray(message?.parts)) return false
     return message.parts.some((part) => {
       if (part?.type === 'file' || part?.type === 'image') return true
       return typeof part?.text === 'string' && /data:[^\s;]+;base64,/i.test(part.text)

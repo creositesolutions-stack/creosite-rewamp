@@ -1,61 +1,56 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import handler from './api/chat.js'
+import chatHandler from './api/chat.js'
 import contactHandler from './api/contact.js'
+import conversationsHandler from './api/conversations.js'
+import conversationHandler from './api/conversation.js'
+import ideasHandler from './api/ideas.js'
+import ephemeralChatHandler from './api/ephemeral-chat.js'
+import { serveNodeRequest } from './server/http.js'
 
-async function handleApiRequest(handlerFn, req, res) {
-  if (req.method !== 'POST') {
-    res.statusCode = 405
-    res.end('Method Not Allowed')
-    return
-  }
+const apiRoutes = new Map([
+  ['/api/chat', chatHandler],
+  ['/api/contact', contactHandler],
+  ['/api/conversations', conversationsHandler],
+  ['/api/conversation', conversationHandler],
+  ['/api/ideas', ideasHandler],
+  ['/api/ephemeral-chat', ephemeralChatHandler],
+])
 
-  let body = ''
-  req.on('data', (chunk) => { body += chunk })
-  req.on('end', async () => {
-    try {
-      const request = new Request(`http://localhost${req.url}`, {
-        method: 'POST',
-        headers: req.headers,
-        body,
-      })
-      const response = await handlerFn(request)
-      res.statusCode = response.status
-      response.headers.forEach((value, key) => res.setHeader(key, value))
-      if (response.body) {
-        const reader = response.body.getReader()
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          res.write(Buffer.from(value))
-        }
-      }
-      res.end()
-    } catch (error) {
-      res.statusCode = 500
-      res.end(String(error))
-    }
-  })
-}
-
-function apiChatPlugin() {
+function creoApiPlugin() {
   return {
-    name: 'api-chat-dev',
+    name: 'creo-api-dev',
     configureServer(server) {
-      const env = loadEnv(server.config.mode, process.cwd(), '');
-      Object.assign(process.env, env);
+      const env = loadEnv(server.config.mode, process.cwd(), '')
+      for (const [key, value] of Object.entries(env)) {
+        if (process.env[key] === undefined) process.env[key] = value
+      }
 
-      server.middlewares.use('/api/chat', (req, res) => {
-        handleApiRequest(handler, req, res)
+      server.middlewares.use((req, res, next) => {
+        let pathname
+        try {
+          pathname = new URL(req.url, 'http://localhost').pathname
+        } catch {
+          next()
+          return
+        }
+
+        const handler = apiRoutes.get(pathname)
+        if (!handler) {
+          next()
+          return
+        }
+
+        serveNodeRequest(handler, req, res).catch((error) => {
+          console.error('[vite-api] Request failed:', error instanceof Error ? error.message : error)
+          if (!res.headersSent) res.statusCode = 500
+          if (!res.writableEnded) res.end('Internal Server Error')
+        })
       })
-
-      server.middlewares.use('/api/contact', (req, res) => {
-        handleApiRequest(contactHandler, req, res)
-      });
     },
-  };
+  }
 }
 
 export default defineConfig({
-  plugins: [react(), apiChatPlugin()],
-});
+  plugins: [react(), creoApiPlugin()],
+})
