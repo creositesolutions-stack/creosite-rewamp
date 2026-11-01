@@ -1,6 +1,7 @@
 export const DEMO_EXAMPLES = [
   {
     title: 'Answers customer questions',
+    mobileTitle: 'Answers questions',
     freesUp: 'answering the same questions again and again.',
     steps: [
       { type: 'visitor', text: 'Do you deliver on Sundays?' },
@@ -16,6 +17,7 @@ export const DEMO_EXAMPLES = [
   },
   {
     title: 'Explain your offering',
+    mobileTitle: 'Explains your offering',
     freesUp: 'helping customers understand packages and products.',
     steps: [
       { type: 'assistant', text: 'Choose an offering and ask Creo AI for a quick explanation:' },
@@ -46,6 +48,7 @@ export const DEMO_EXAMPLES = [
   },
   {
     title: 'Books appointments',
+    mobileTitle: 'Books appointments',
     freesUp: 'phone tag and back-and-forth emails.',
     steps: [
       { type: 'visitor', text: 'Can I book a visit this week?' },
@@ -65,6 +68,7 @@ export const DEMO_EXAMPLES = [
   },
   {
     title: 'Collects and sorts enquiries',
+    mobileTitle: 'Collects enquiries',
     freesUp: 'chasing details before you can quote.',
     steps: [
       { type: 'visitor', text: 'I need a quote for a kitchen refit.' },
@@ -91,6 +95,7 @@ export const DEMO_EXAMPLES = [
   },
   {
     title: 'Drafts replies for you',
+    mobileTitle: 'Drafts replies',
     freesUp: 'typing out routine replies.',
     steps: [
       { type: 'visitor', text: 'Hi, is my order still on its way? Sam' },
@@ -107,6 +112,7 @@ export const DEMO_EXAMPLES = [
   },
   {
     title: 'Speaks your customers’ language',
+    mobileTitle: 'Speaks your customers’ language',
     freesUp: 'turning customers away because of language.',
     steps: [
       { type: 'assistant', text: 'A customer writes in their own language. Pick one:' },

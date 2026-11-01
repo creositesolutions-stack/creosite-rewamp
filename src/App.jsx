@@ -167,11 +167,13 @@ export default function App() {
       if (!media.matches) return
       const cards = [...grid.querySelectorAll('.project-card')]
       if (!cards.length) return
-      const left = grid.getBoundingClientRect().left
+      const bounds = grid.getBoundingClientRect()
+      const center = bounds.left + grid.clientWidth / 2
       let next = 0
       let distance = Infinity
       cards.forEach((card, index) => {
-        const gap = Math.abs(card.getBoundingClientRect().left - left)
+        const rect = card.getBoundingClientRect()
+        const gap = Math.abs(rect.left + rect.width / 2 - center)
         if (gap < distance) { distance = gap; next = index }
       })
       setActiveProject((current) => (current === next ? current : next))

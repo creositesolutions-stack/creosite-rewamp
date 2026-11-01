@@ -103,7 +103,7 @@ header { border-bottom-color:#1e252e; }.links { color:#bfc7d1; }.ghost { border-
   footer .wrap { flex-direction:column; align-items:flex-start; gap:8px; }
   .selected-work .detail-button { display:inline-flex; }
   .selected-work .work-grid { grid-auto-columns:clamp(240px,calc(100vw - 72px),420px); scroll-padding-inline:4px; }
-  .selected-work .project-card { scroll-snap-align:start; }
+  .selected-work .project-card { scroll-snap-align:center; }
 
   .creo-chat { right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); }
   .chat-launcher { animation:none; box-shadow:0 10px 28px rgba(76,111,148,.5),0 0 0 6px rgba(143,176,207,.14); }
