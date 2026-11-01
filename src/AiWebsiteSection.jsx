@@ -65,10 +65,6 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
   const sectionRef = useRef(null)
   const tabRefs = useRef([])
   const activeExampleRef = useRef(0)
-  const autoAdvanceStopped = useRef(false)
-  const autoStarted = useRef(false)
-  const autoTimer = useRef(null)
-  const scheduleAutoAdvance = useRef(null)
   const ideasRequest = useRef(0)
   const ideasAbort = useRef(null)
   const handleTurnstile = useCallback((token) => setTurnstileToken(token), [])
@@ -174,49 +170,7 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
     resolve(choice)
   }, [])
 
-  useEffect(() => {
-    const section = sectionRef.current
-    if (!section) return undefined
-
-    const beginAutoPlay = () => {
-      if (autoStarted.current) return
-      autoStarted.current = true
-      if (autoAdvanceStopped.current) return
-      startDemo(activeExampleRef.current)
-      if (prefersReducedMotion()) return
-
-      const advance = () => {
-        autoTimer.current = window.setTimeout(() => {
-          if (autoAdvanceStopped.current) return
-          startDemo((activeExampleRef.current + 1) % DEMO_EXAMPLES.length)
-          advance()
-        }, 7000)
-      }
-      scheduleAutoAdvance.current = advance
-      advance()
-    }
-
-    if (!('IntersectionObserver' in window)) {
-      beginAutoPlay()
-    } else {
-      const observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) beginAutoPlay()
-      }, { threshold: 0.2 })
-      observer.observe(section)
-      return () => {
-        observer.disconnect()
-        window.clearTimeout(autoTimer.current)
-        scheduleAutoAdvance.current = null
-        cancelPlayback()
-      }
-    }
-
-    return () => {
-      window.clearTimeout(autoTimer.current)
-      scheduleAutoAdvance.current = null
-      cancelPlayback()
-    }
-  }, [cancelPlayback, startDemo])
+  useEffect(() => () => cancelPlayback(), [cancelPlayback])
 
   useEffect(() => {
     const tab = tabRefs.current[activeExample]
@@ -287,11 +241,7 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
                   key={example.title}
                   aria-selected={selected}
                   aria-controls="ai-demo-panel"
-                  onClick={() => {
-                    autoAdvanceStopped.current = true
-                    window.clearTimeout(autoTimer.current)
-                    startDemo(index)
-                  }}
+                  onClick={() => startDemo(index)}
                 >
                   <span className="ai-example-title ai-example-title-desktop">{example.title}</span>
                   <span className="ai-example-title ai-example-title-mobile">{example.mobileTitle}</span>
@@ -306,15 +256,10 @@ export default function AiWebsiteSection({ onDiscussIdea }) {
             <div className="ai-chat-header">
               <span className="ai-chat-label-desktop">YOUR WEBSITE · ASSISTANT</span>
               <span className="ai-chat-label-mobile">YOUR WEBSITE ASSISTANT</span>
-              <button type="button" onClick={() => {
-                window.clearTimeout(autoTimer.current)
-                startDemo(activeExample)
-                if (autoStarted.current && !autoAdvanceStopped.current && !prefersReducedMotion()) {
-                  scheduleAutoAdvance.current?.()
-                }
-              }} aria-label="Replay this example">↻ REPLAY</button>
+              <button type="button" onClick={() => startDemo(activeExample)} aria-label="Replay this example">↻ REPLAY</button>
             </div>
             <div className="ai-chat-messages" aria-live="polite" aria-relevant="additions text">
+              {entries.length === 0 && !typing && choices.length === 0 && <div className="ai-message assistant">Choose a task on the left to watch the website assistant in action.</div>}
               {entries.map((entry) => entry.type === 'card' ? (
                 <div className="ai-result-card ai-demo-result" key={entry.id}>
                   <strong>{entry.title}</strong>
