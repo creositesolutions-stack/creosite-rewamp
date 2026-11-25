@@ -1,11 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { buildIdeaDiscussionPrompt } from './ai-website-ideas.js'
 import AiWebsiteSection from './AiWebsiteSection.jsx'
 import visionReceipt from '../bill_image.webp'
 import visionReceiptSmall from '../bill_image-480.webp'
-import Turnstile, { TURNSTILE_SITE_KEY } from './Turnstile.jsx'
 import { BrowserMock, Footer, Header } from './site.jsx'
-import WorksPage from './WorksPage.jsx'
+import AboutPage from './AboutPage.jsx'
 import { useWorks } from './works.js'
 
 const CreoChat = lazy(() => import('./CreoChat.jsx'))
@@ -54,7 +53,7 @@ const services = [
 
 export default function App() {
   const path = typeof window !== 'undefined' ? window.location.pathname.replace(/\/+$/, '') : ''
-  if (path === '/work') return <WorksPage />
+  if (path === '/about') return <AboutPage />
   if (path === '/contact') return <ContactPage />
   return <HomePage />
 }
@@ -63,48 +62,37 @@ function ContactForm() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState('')
-  const [turnstileReset, setTurnstileReset] = useState(0)
-  const handleTurnstile = useCallback((token) => setTurnstileToken(token), [])
-  const resetTurnstile = () => {
-    setTurnstileToken('')
-    setTurnstileReset((value) => value + 1)
-  }
   const submit = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const name = data.get('name').trim(), email = data.get('email').trim(), message = data.get('message').trim()
     const phone = data.get('phone').trim()
     if (!name || !/^\S+@\S+\.\S+$/.test(email) || !message) return setError('Add your name, a valid email and a short project description.')
-    if (TURNSTILE_SITE_KEY && !turnstileToken) return setError('Please complete the verification below and try again.')
     setError('')
     setSending(true)
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, message, turnstileToken }),
+        body: JSON.stringify({ name, email, phone, message }),
       })
       if (!response.ok) {
         const text = await response.text()
         throw new Error(text || 'We could not send your message right now.')
       }
       setSent(true)
-      resetTurnstile()
     } catch {
       setError('We could not send your message right now. Please try again in a moment.')
-      resetTurnstile()
     } finally {
       setSending(false)
     }
   }
-  if (sent) return <div className="ok show contact-success"><span className="success-mark">✓</span><p className="mono">MESSAGE SENT</p><h3>Thanks for reaching out.</h3><button className="send-another" type="button" onClick={() => { setSent(false); setError(''); resetTurnstile() }}>Send another message</button></div>
+  if (sent) return <div className="ok show contact-success"><span className="success-mark">✓</span><p className="mono">MESSAGE SENT</p><h3>Thanks for reaching out.</h3><button className="send-another" type="button" onClick={() => { setSent(false); setError('') }}>Send another message</button></div>
   return <form onSubmit={submit} noValidate>
     <div className="form-intro"><span className="chat-avatar">C</span><div><b>Talk to Creo</b><p>Tell us what is on your mind.</p></div></div>
     <div className="two"><label>Name<input name="name" required autoComplete="name" placeholder="Your name" maxLength={120} /></label><label>Email<input name="email" type="email" required autoComplete="email" placeholder="you@company.com" maxLength={254} /></label></div>
     <label>Phone number <small>(optional)</small><input name="phone" type="tel" autoComplete="tel" placeholder="+91 00000 00000" maxLength={40} /></label>
     <label>How can we help?<textarea name="message" required placeholder="Tell us a little about your project or question..." maxLength={5000} /></label>
-    <Turnstile onToken={handleTurnstile} resetSignal={turnstileReset} action="contact" />
     <p className="form-error" role="alert">{error}</p><button className="pill solid" type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send message →'}</button>
   </form>
 }
@@ -155,7 +143,6 @@ function HomePage() {
   const { works: projects, loading: projectsLoading } = useWorks({ favourite: true })
   const restingProject = projects.length > 1 ? 1 : 0
   const mobileDefault = () => (typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches ? 0 : 1)
-  const [activeService, setActiveService] = useState(0)
   const [activeProject, setActiveProject] = useState(mobileDefault)
   const [chatIntent, setChatIntent] = useState(null)
   const [showChat, setShowChat] = useState(false)
@@ -222,9 +209,29 @@ function HomePage() {
 
   return <><Header /><main id="top">
     <section className="hero"><svg className="waves" viewBox="0 0 1440 500" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="wave-1" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#3a5774" stopOpacity=".82" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient><linearGradient id="wave-2" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#1d2938" /><stop offset="1" stopColor="#08090b" stopOpacity="0" /></linearGradient></defs><path className="a" d="M0 260C220 180 420 200 560 300S900 480 1100 330 1340 160 1440 190V500H0Z" fill="url(#wave-1)" stroke="#b5c0ce" strokeOpacity=".38" strokeWidth="2" /><path className="b" d="M0 330C200 280 380 330 520 400S860 500 1040 400 1320 250 1440 270V500H0Z" fill="url(#wave-2)" opacity=".8" /></svg><div className="wrap hero-content"><div className="chip"><span className="dot" />Creosite Solutions — Websites for what’s next</div><h1><span className="w">Let’s Build</span><span className="w">Something</span><span className="o">Unforgettable.</span></h1><p className="sub">AI-powered web development for modern businesses. Beautiful websites, built in days — not months.</p><div className="built"><i>built by</i><b>humans</b><span>+</span><b className="ai-star">✦ AI</b></div><div className="ctas"><a className="pill solid" href="#ai-ideas">Find AI ideas for your business ↓</a><a className="pill dark" href="/contact">Get started →</a></div></div><span className="mono hero-note">EST. 2024 / INDIA · REMOTE · GLOBAL</span><span className="mono hero-scroll">SCROLL ↓</span></section>
-    <section id="work" className="selected-work"><div className="wrap"><h2>Selected <span className="outline">work</span></h2><p className="lead">A few of the digital experiences we&apos;ve built for ambitious brands and communities.</p></div><div className="wrap wide">{projectsLoading ? <div className="work-loading" role="status" aria-live="polite"><div className="work-loading-card"><span /><span /><span /></div><p className="mono">LOADING SELECTED WORK…</p></div> : projects.length > 0 ? <><div className="work-grid has-active-project" ref={workGridRef}>{projects.map((project, index) => { const isActive = activeProject === index; return <article className={`card project-card ${index !== activeProject ? 'side-card' : ''} ${isActive ? 'is-active' : ''}`} key={project.id} style={{ '--brand': project.brand, '--brand-tone': project.tone }} onMouseEnter={() => setActiveProject(index)} onMouseLeave={() => setActiveProject(restingProject)}><BrowserMock image={project.cover} smallImage={project.coverSmall} width={project.width} height={project.height} name={project.name} /><div className="meta"><div><h3>{project.name}</h3>{project.description && <p>{project.description}</p>}</div><div className="project-meta"><button className="ask-creo" type="button" onClick={() => askCreo(project)} aria-label={`Ask Creo about the ${project.name} project`}><span className="ask-creo-icon" aria-hidden="true">✦</span><span className="ask-creo-label">Ask Creo</span></button>{project.url && <a className="detail-button" href={project.url} target="_blank" rel="noopener noreferrer" onFocus={() => setActiveProject(index)} onBlur={() => setActiveProject(restingProject)}>Details <span>→</span></a>}</div></div></article>})}</div><div className="work-more"><a className="pill ghost" href="/work">View all work →</a></div></> : <div className="work-empty"><p className="mono">SELECTED WORK</p><h3>Fresh work is on its way.</h3><p>We are updating this gallery right now. Browse everything we have built, or tell us what you are planning.</p><div className="work-empty-actions"><a className="pill ghost" href="/work">View all work →</a><a className="pill dark" href="/contact">Start a project →</a></div></div>}</div></section>
+    <section id="work" className="selected-work"><div className="wrap"><h2>Selected <span className="outline">work</span></h2><p className="lead">A few of the digital experiences we&apos;ve built for ambitious brands and communities.</p></div><div className="wrap wide">{projectsLoading ? <div className="work-loading" role="status" aria-live="polite"><div className="work-loading-card"><span /><span /><span /></div><p className="mono">LOADING SELECTED WORK…</p></div> : projects.length > 0 ? <><div className="work-grid has-active-project" ref={workGridRef}>{projects.map((project, index) => { const isActive = activeProject === index; return <article className={`card project-card ${index !== activeProject ? 'side-card' : ''} ${isActive ? 'is-active' : ''}`} key={project.id} style={{ '--brand': project.brand, '--brand-tone': project.tone }} onMouseEnter={() => setActiveProject(index)} onMouseLeave={() => setActiveProject(restingProject)}><BrowserMock image={project.cover} smallImage={project.coverSmall} width={project.width} height={project.height} name={project.name} /><div className="meta"><div><h3>{project.name}</h3>{project.description && <p>{project.description}</p>}</div><div className="project-meta"><button className="ask-creo" type="button" onClick={() => askCreo(project)} aria-label={`Ask Creo about the ${project.name} project`}><span className="ask-creo-icon" aria-hidden="true">✦</span><span className="ask-creo-label">Ask Creo</span></button>{project.url && <a className="detail-button" href={project.url} target="_blank" rel="noopener noreferrer" onFocus={() => setActiveProject(index)} onBlur={() => setActiveProject(restingProject)}>Details <span>→</span></a>}</div></div></article>})}</div></> : <div className="work-empty"><p className="mono">SELECTED WORK</p><h3>Fresh work is on its way.</h3><p>We are updating this gallery right now. Tell us what you are planning and we will share relevant examples.</p><div className="work-empty-actions"><a className="pill dark" href="/contact">Start a project →</a></div></div>}</div></section>
     <AiWebsiteSection onDiscussIdea={discussIdeaWithCreo} />
-    <section id="solutions" className="dark-section build-section"><div className="wrap build-layout"><div className="build-heading"><span className="eyebrow">THE CREOSITE STUDIO / 01—06</span><h2>What we<br /><span className="outline">build</span></h2><p className="lead">A shelf of practical digital services, made to move your business forward.</p><div className="build-controls"><button type="button" aria-label="Previous service" onClick={() => setActiveService(activeService < 0 ? services.length - 1 : (activeService + services.length - 1) % services.length)}>←</button><span>{String(activeService + 1).padStart(2, '0')} <i>/</i> {String(services.length).padStart(2, '0')}</span><button type="button" aria-label="Next service" onClick={() => setActiveService(activeService < 0 ? 0 : (activeService + 1) % services.length)}>→</button></div></div><div className="build-shelf" role="tablist" aria-label="What we build">{services.map((item, index) => <button className={`service-book ${index === activeService ? 'is-open' : ''}`} key={item.name} type="button" role="tab" aria-selected={index === activeService} aria-label={`${item.name}, ${index + 1} of ${services.length}`} onClick={(event) => { setActiveService(index); if (window.matchMedia('(max-width: 640px)').matches) event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }) }}><span className="book-spine"><span className="book-number">0{index + 1}</span><span className="book-spine-title">{item.name}</span><span className="book-mark">C.</span></span>{index === activeService && <span className="book-cover"><span className="cover-kicker">CREOSITE / SERVICE {String(index + 1).padStart(2, '0')}</span><span className="cover-symbol" aria-hidden="true">{['↗', '◎', '✳', '✦', '⌘', '↳'][index]}</span><span className="cover-title">{item.name}</span><span className="cover-description">{item.description}</span><span className="cover-list">{item.items.map((feature) => <span key={feature}>{feature}</span>)}</span><span className="cover-index">CLICK TO EXPLORE <b>↗</b></span></span>}</button>)}</div></div></section>
+    <section id="solutions" className="dark-section build-section">
+      <div className="wrap">
+        <div className="build-heading">
+          <span className="eyebrow">THE CREOSITE STUDIO / 01—06</span>
+          <h2>What we<br /><span className="outline">build</span></h2>
+          <p className="lead">Practical digital services, made to move your business forward.</p>
+        </div>
+        <div className="service-grid">
+          {services.map((item, index) => (
+            <article className="service-card" key={item.name}>
+              <span className="service-index mono">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{item.name}</h3>
+              <p>{item.description}</p>
+              <ul>
+                {item.items.map((feature) => <li key={feature}>{feature}</li>)}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
     <section id="about" className="about dark-section"><div className="wrap"><div className="vision-layout"><div className="vision-copy"><span className="eyebrow">OUR PURPOSE</span><h2>Our <span className="outline">vision</span></h2><p>We want to make useful technology part of everyday business, not something that only large companies can afford or understand.</p><p>Our aim is to use AI and digital tools in practical ways that make work faster, more efficient and more affordable for small businesses. Technology only matters when it genuinely helps ordinary people solve real problems, save time and grow with confidence.</p></div><figure className="vision-art"><img src={visionReceipt} srcSet={`${visionReceiptSmall} 480w, ${visionReceipt} 720w`} sizes="(max-width: 900px) 90vw, 420px" width={720} height={927} alt="A receipt-style illustration of Creo’s vision: useful, accessible technology that supports people." loading="lazy" decoding="async" /></figure></div></div></section>
     <section id="contact"><div className="wrap"><h2>Let’s start a <span className="outline">conversation</span></h2><p className="lead">Have a project, question or idea? Send us a note and we’ll be in touch shortly.</p><div className="contact"><div className="info"><p className="contact-kicker">GET IN TOUCH</p><a href={`mailto:${contact.email}`}>{contact.email}</a><p>For projects, questions and partnerships</p><a href={phoneHref}>{contact.phone}</a><p>{contact.hours}</p><a className="whatsapp-option" href={whatsappHref} target="_blank" rel="noopener noreferrer"><span className="whatsapp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.48 1.33 4.99L2 22l5.14-1.31A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm5.81 14.24c-.24.68-1.41 1.31-1.96 1.39-.5.07-1.13.1-1.83-.12-.42-.14-.97-.32-1.67-.62-2.93-1.27-4.83-4.22-4.98-4.43-.15-.2-1.19-1.59-1.19-3.03 0-1.44.76-2.15 1.02-2.44.27-.29.58-.37.78-.37h.57c.18 0 .42-.07.66.51.24.58.83 2 .9 2.14.07.14.12.32.03.51-.1.19-.14.31-.28.49-.15.17-.31.39-.44.53-.15.15-.31.31-.13.54.14.22.64 1.05 1.38 1.7.95.84 1.74 1.1 1.99 1.23.24.13.39.11.54-.07.15-.18.63-.73.8-.98.17-.25.33-.21.57-.12.24.1 1.52.72 1.78.85.26.13.43.2.49.31.06.12.06.69-.18 1.36z"/></svg></span><span><b>WhatsApp us now</b><small>Start a quick conversation</small></span><strong>→</strong></a></div><ContactForm /></div></div></section>
   </main><Footer />{showChat && <Suspense fallback={null}><CreoChat intent={chatIntent} /></Suspense>}</>

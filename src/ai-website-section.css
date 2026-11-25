@@ -176,7 +176,6 @@
 .ai-powered-label i, .ai-generating i { width: 7px; height: 7px; border-radius: 50%; background: var(--ai-green); box-shadow: 0 0 10px var(--ai-green); }
 .ai-ideas-panel > p:first-of-type { margin: 0 0 22px; color: var(--ai-muted); font-size: 16px; }
 .ai-ideas-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
-.ai-ideas-form .turnstile-slot { grid-column: 1 / -1; align-self: start; }
 .ai-ideas-form input {
   min-width: 0;
   min-height: 48px;
@@ -260,7 +259,6 @@
   .ai-ideas-panel h3 { font-size: 27px; }
   .ai-ideas-form { grid-template-columns: minmax(0, 1fr); }
   .ai-ideas-form button { width: 100%; }
-  .ai-ideas-form .turnstile-slot { grid-column: 1; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ai-website-section *,
@@ -268,10 +266,7 @@
   .ai-website-section *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
-.ai-ideas-form .turnstile-error { flex-basis:100%; }
-
 @media (max-width: 560px) {
-  .ai-ideas-form .turnstile-slot { width:100%; justify-content:flex-start; }
   .ai-chat-messages { min-height:320px; max-height:min(60dvh,520px); }
 }
 

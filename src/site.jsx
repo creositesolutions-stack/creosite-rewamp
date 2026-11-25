@@ -24,7 +24,7 @@ export function Header({ page = 'home' }) {
     <a href={`${homePrefix}#top`} className="logo" aria-label="Creosite Solutions home" onClick={closeMenu}><Mark /><span>Creosite<small>SOLUTIONS</small></span></a>
     <div className={`links ${open ? 'open' : ''}`}>
       <a href={`${homePrefix}#top`} onClick={closeMenu} aria-current={page === 'home' ? 'page' : undefined}>Home</a>
-      <a href="/work" onClick={closeMenu} aria-current={page === 'works' ? 'page' : undefined}>Work</a>
+      <a href="/about" onClick={closeMenu} aria-current={page === 'about' ? 'page' : undefined}>About</a>
       <a href={`${homePrefix}#solutions`} onClick={closeMenu}>Solutions</a>
       <a href={`${homePrefix}#about`} onClick={closeMenu}>Vision</a>
       <a href="/contact" onClick={closeMenu} aria-current={page === 'contact' ? 'page' : undefined}>Contact</a>

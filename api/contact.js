@@ -1,6 +1,5 @@
 import { createRateLimiter } from '../shared/guardrails.js'
 import { getClientIp } from '../server/request.js'
-import { verifyTurnstile } from '../server/turnstile.js'
 
 export const config = { runtime: 'edge' }
 
@@ -93,10 +92,6 @@ export default async function handler(req) {
   }
 
   const ip = getClientIp(req)
-  const turnstile = await verifyTurnstile(body.turnstileToken, ip)
-  if (!turnstile.ok) {
-    return plainTextResponse('Please complete the verification and try again.', 403)
-  }
 
   const rate = limiter.check(ip)
   if (rate.limited) {

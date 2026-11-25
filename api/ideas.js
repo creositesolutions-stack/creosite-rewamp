@@ -3,7 +3,6 @@ import { Output } from 'ai'
 import { z } from 'zod'
 import { createRateLimiter } from '../shared/guardrails.js'
 import { getClientIp } from '../server/request.js'
-import { verifyTurnstile } from '../server/turnstile.js'
 import { createApiHandler, errorResponse, readJsonBody } from '../server/http.js'
 import {
   createRunProviderOptions,
@@ -77,10 +76,6 @@ export const ideasHandler = createApiHandler(async (request) => {
   if (/[\r\n\u0000-\u001f]/.test(businessType)) return errorResponse('invalid_business_type', 'Enter a short business type only.', 400)
 
   const ip = getClientIp(request)
-  const turnstile = await verifyTurnstile(value.turnstileToken, ip)
-  if (!turnstile.ok) {
-    return errorResponse('turnstile_failed', 'Please complete the verification and try again.', 403)
-  }
 
   const ipRate = ipLimiter.check(ip)
   if (ipRate.limited) return limitedResponse(ipRate)
